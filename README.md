@@ -2,7 +2,7 @@
 
 面向 CF-Server-Monitor 的毛玻璃主题二次开发分支，基于 [allury 的移植版](https://github.com/allury/CFSM-Glassmorphism)，视觉与三网组件参考 [Komari Glassmorphism](https://github.com/sanrokamlan-prog/komari-theme-Glassmorphism)。保留 MIT 许可和原作者署名。
 
-当前为 **1.3.0-dev.1 开发候选版**，尚未发布稳定版，也尚未完成真实 Cloudflare 站点四种权限组合验收。
+当前为 **1.3.0-rc.1 候选版**，供测试和反馈，尚未完成真实 Cloudflare 站点四种权限组合验收，不代表正式稳定版。[发布说明与固定安装地址](docs/releases/v1.3.0-rc.1.md)。
 
 本轮新增三网多线路、小曲线/色块、时间桶交互和按来源/节点配置；修复跨来源凭据发送及名称混用。遵守 CFSM 额度规范，不通过定时 REST 推进历史，详情默认十分钟。跨来源私有授权暂不支持，请使用同源安装。
 
