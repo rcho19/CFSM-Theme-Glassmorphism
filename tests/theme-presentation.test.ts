@@ -6,7 +6,7 @@ import {
   isExpiring,
   isHighLoad,
   isTrafficWarning,
-  nodeCardTransitionKey,
+  nodeCardCollectionKey,
   parseTrafficLimitBytes,
   remainingValue,
   resolveChartFamilies,
@@ -23,19 +23,19 @@ import type { GlassServer } from '@/types/glassmorphism'
 
 const source = { base: 'https://status.example', label: 'status.example' }
 
-describe('卡片排序身份', () => {
-  it.each(['totalTraffic', 'upload', 'download', 'peak'] as const)('%s 与默认顺序复用同一节点', (sort) => {
-    expect(nodeCardTransitionKey('all', sort, 'source:node')).toBe(nodeCardTransitionKey('all', null, 'source:node'))
+describe('卡片网格切换身份', () => {
+  it.each(['totalTraffic', 'upload', 'download', 'peak'] as const)('%s 与默认顺序使用独立网格以播放进场', (sort) => {
+    expect(nodeCardCollectionKey('all', sort)).not.toBe(nodeCardCollectionKey('all', null))
   })
 
-  it('成员筛选、分组和不同来源节点仍保留各自身份', () => {
-    const original = nodeCardTransitionKey('all', null, 'source:node')
+  it('成员筛选和分组也有独立网格，不同菜单不共用标识', () => {
+    const original = nodeCardCollectionKey('all', null)
     for (const filter of ['favorite', 'offline', 'highLoad', 'expiring'] as const) {
-      expect(nodeCardTransitionKey('all', filter, 'source:node')).not.toBe(original)
+      expect(nodeCardCollectionKey('all', filter)).not.toBe(original)
     }
-    expect(nodeCardTransitionKey('other', null, 'source:node')).not.toBe(original)
-    expect(nodeCardTransitionKey('all', null, 'other-source:node')).not.toBe(original)
-    expect(nodeCardTransitionKey('a-b', null, 'c')).not.toBe(nodeCardTransitionKey('a', null, 'b-c'))
+    expect(nodeCardCollectionKey('other', null)).not.toBe(original)
+    expect(nodeCardCollectionKey('all', 'peak')).not.toBe(nodeCardCollectionKey('all', 'totalTraffic'))
+    expect(new Set(['peak', 'totalTraffic', 'favorite', 'offline'].map((group) => nodeCardCollectionKey(group, null))).size).toBe(4)
   })
 })
 

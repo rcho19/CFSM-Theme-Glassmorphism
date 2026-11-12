@@ -22,7 +22,7 @@ import {
   generalFinanceContext,
   isExpiring,
   isHighLoad,
-  nodeCardTransitionKey,
+  nodeCardCollectionKey,
   resolveQuickControlKeys,
   type QuickControlKey,
 } from '@/domain/theme-presentation'
@@ -298,14 +298,8 @@ function cardStyle(index: number): Record<string, string> {
   return NODE_ITEM_DELAY_STYLES[Math.min(index, 12)] ?? NODE_ITEM_DELAY_STYLES[0] ?? {}
 }
 
-/**
- * key 含当前分组与成员筛选。总流量、峰值等纯排序不换 key；切换成员筛选时整组卡片换新 key，
- * 旧卡片按离场过渡淡出、新卡片依次进场；切换分组时整个网格随外层 key 重新挂载（见模板）。
- * 实时数据更新、搜索与排序不改变 key，卡片保持原组件，换位时按 move 过渡滑到新位置。
- */
-function cardTransitionKey(server: GlassServer): string {
-  return nodeCardTransitionKey(selectedGroup.value, activeQuickFilter.value, server.key)
-}
+// 快捷菜单与分组使用同一进场机制；仅实时排序、指标更新和搜索不会重挂网格。
+const cardCollectionKey = computed(() => nodeCardCollectionKey(selectedGroup.value, activeQuickFilter.value))
 
 function quickAction(key: QuickControlKey): void {
   if (activeQuickFilter.value === key) {
@@ -573,12 +567,12 @@ onUnmounted(() => realtime.stop())
             <!--
               与 Komari 一致：卡片进场用 TransitionGroup 的过渡，只在首次渲染与卡片加入列表时播放；
               KeepAlive 重新插回页面时不会重播（CSS animation 会）。
-              按分组加 key：上游每个分组各有一个 TabsContent，切换分组时旧分组的网格整个卸载、
+              按分组及快捷菜单加 key：沿用上游分组切换机制，旧网格整个卸载、
               新分组的网格重新挂载并按 appear 依次进场，旧卡片当帧消失，不走离场过渡。
             -->
             <TransitionGroup
               v-else-if="viewMode === 'card'"
-              :key="selectedGroup"
+              :key="cardCollectionKey"
               :appear="cardTransition"
               :css="cardTransition"
               name="node-card-switch"
@@ -591,7 +585,7 @@ onUnmounted(() => realtime.stop())
             >
               <ServerCard
                 v-for="(server, index) in visibleServers"
-                :key="cardTransitionKey(server)"
+                :key="server.key"
                 :three-net-enabled="theme.runtime.threeNetEnabled"
                 :server="server"
                 :show-source="showSource"

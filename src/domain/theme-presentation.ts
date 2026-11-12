@@ -62,12 +62,9 @@ export type GeneralCardKey =
 
 export type QuickControlKey = 'favorite' | 'totalTraffic' | 'upload' | 'download' | 'peak' | 'offline' | 'highLoad' | 'expiring'
 
-/** 排序不改变节点身份，避免同一节点的新旧卡片在网格中同时占位。 */
-export function nodeCardTransitionKey(group: string, filter: QuickControlKey | null, serverKey: string): string {
-  const membershipFilter = filter === 'totalTraffic' || filter === 'upload' || filter === 'download' || filter === 'peak'
-    ? 'all'
-    : filter ?? 'all'
-  return JSON.stringify([group, membershipFilter, serverKey])
+/** 显式切换分组或快捷菜单时整体重新进场，旧网格不与新卡片争占栅格。 */
+export function nodeCardCollectionKey(group: string, filter: QuickControlKey | null): string {
+  return JSON.stringify([group, filter])
 }
 /*
  * 详情指标卡的 key 与顺序取自 Komari `stores/app.ts` 的 `ALL_DETAIL_METRIC_CARD_KEYS`。
