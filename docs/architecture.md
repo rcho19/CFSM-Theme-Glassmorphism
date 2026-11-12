@@ -4,6 +4,8 @@
 
 ## 目标
 
+主题设置入口策略由 `domain/theme-settings-access.ts` 解析主站已确认 config，经 app store 统一提供给三个页面。Header 只接收展示标志；设置页在未确认配置时不渲染表单，在策略禁止或冷启动配置失败时替换路由到首页。配置刷新保留已有真实策略，授权失效后响应式收回入口和表单。本地覆盖/草稿不参与此策略，服务端写鉴权仍独立保留。
+
 CFSM-Glassmorphism 是 CF-Server-Monitor 的静态第三方主题。运行包只包含 `index.html` 与 `assets/`；它保留 Komari Glassmorphism 的视觉与交互语言，但所有数据、鉴权、实时协议和配置持久化都服从 CFSM 官方主题协议。
 
 优先级固定为：数据真实性 > API 兼容性 > 功能完整度 > 视觉相似度 > 开发便利性。

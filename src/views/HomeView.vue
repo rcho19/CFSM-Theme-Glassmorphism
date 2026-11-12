@@ -346,6 +346,7 @@ onUnmounted(() => realtime.stop())
         :total="summary.total"
         :source-count="sourceCount"
         :admin-url="visibleAdminUrl"
+        :settings-visible="app.themeSettingsAccess === 'allowed'"
         :theme-mode="theme.siteThemeMode"
         :resolved-theme="theme.resolvedTheme"
         :theme-override="theme.themeOverride"

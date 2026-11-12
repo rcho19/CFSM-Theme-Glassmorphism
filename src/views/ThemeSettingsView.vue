@@ -102,6 +102,7 @@ function fieldState(key: keyof ThemeSettings): string | null {
 }
 
 function fieldEnabled(field: ThemeField): boolean {
+  if (field.key === 'hideThemeSettingsWhenLoggedOut' && !authorized.value) return false
   return isFieldEnabled(field, theme.draft)
 }
 
@@ -200,6 +201,10 @@ onMounted(async () => {
 watch(siteTitle, (title) => {
   document.title = title ? `主题设置 · ${title}` : '主题设置'
 }, { immediate: true })
+
+watch(() => app.themeSettingsAccess, (access) => {
+  if (access === 'blocked') void router.replace({ name: 'home' })
+}, { immediate: true })
 </script>
 
 <template>
@@ -211,6 +216,7 @@ watch(siteTitle, (title) => {
         :version="app.config?.version ?? null"
         :loading="app.state === 'loading'"
         :admin-url="visibleAdminUrl"
+        :settings-visible="app.themeSettingsAccess === 'allowed'"
         :theme-mode="theme.siteThemeMode"
         :resolved-theme="theme.resolvedTheme"
         :theme-override="theme.themeOverride"
@@ -219,7 +225,7 @@ watch(siteTitle, (title) => {
         @cycle-theme="theme.cycleTheme"
       />
 
-      <main v-if="!coldStartCover" class="settings-page">
+      <main v-if="!coldStartCover && app.themeSettingsAccess !== 'blocked'" class="settings-page">
         <section class="settings-intro glass-panel">
           <div class="settings-intro__copy">
             <button class="detail-back" type="button" @click="router.push({ name: 'home' })">

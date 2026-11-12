@@ -35,6 +35,7 @@ export interface ThemeSettings {
   generalCardKeys: string
   homeToolsEnabled: boolean
   hideAdminEntryWhenLoggedOut: boolean
+  hideThemeSettingsWhenLoggedOut: boolean
   hidePriceWhenLoggedOut: boolean
   providerAliases: string
   exportSecondaryPassword: string
@@ -89,6 +90,7 @@ export const THEME_SETTING_KEYS = [
   'generalCardKeys',
   'homeToolsEnabled',
   'hideAdminEntryWhenLoggedOut',
+  'hideThemeSettingsWhenLoggedOut',
   'hidePriceWhenLoggedOut',
   'providerAliases',
   'exportSecondaryPassword',
@@ -172,6 +174,7 @@ export const DEFAULT_THEME_SETTINGS: Readonly<ThemeSettings> = Object.freeze({
   generalCardKeys: 'memory\ndisk\nremainingValue\ntotalTraffic\nuploadSpeed\ndownloadSpeed',
   homeToolsEnabled: true,
   hideAdminEntryWhenLoggedOut: false,
+  hideThemeSettingsWhenLoggedOut: false,
   hidePriceWhenLoggedOut: false,
   providerAliases: '',
   exportSecondaryPassword: '',
@@ -425,6 +428,7 @@ export function normalizeThemeSettingsLayer(
     generalCardKeys: listText(input.generalCardKeys, fallback.generalCardKeys),
     homeToolsEnabled: booleanValue(input.homeToolsEnabled, fallback.homeToolsEnabled),
     hideAdminEntryWhenLoggedOut: booleanValue(input.hideAdminEntryWhenLoggedOut, fallback.hideAdminEntryWhenLoggedOut),
+    hideThemeSettingsWhenLoggedOut: booleanValue(input.hideThemeSettingsWhenLoggedOut, fallback.hideThemeSettingsWhenLoggedOut),
     hidePriceWhenLoggedOut: booleanValue(input.hidePriceWhenLoggedOut, fallback.hidePriceWhenLoggedOut),
     providerAliases: textValue(input.providerAliases, fallback.providerAliases),
     exportSecondaryPassword: textValue(input.exportSecondaryPassword, fallback.exportSecondaryPassword),
@@ -494,6 +498,7 @@ export function serializeThemeSettings(settings: ThemeSettings): Record<string, 
     generalCardKeys: settings.generalCardKeys,
     homeToolsEnabled: settings.homeToolsEnabled,
     hideAdminEntryWhenLoggedOut: settings.hideAdminEntryWhenLoggedOut,
+    hideThemeSettingsWhenLoggedOut: settings.hideThemeSettingsWhenLoggedOut,
     hidePriceWhenLoggedOut: settings.hidePriceWhenLoggedOut,
     providerAliases: settings.providerAliases,
     exportSecondaryPassword: settings.exportSecondaryPassword,

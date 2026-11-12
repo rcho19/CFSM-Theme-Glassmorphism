@@ -263,6 +263,13 @@ export const THEME_SETTINGS_FORM: readonly ThemeFieldGroup[] = [
         help: '未登录时隐藏顶部后台管理入口；登录后仍指向 /admin#/admin。',
       },
       {
+        key: 'hideThemeSettingsWhenLoggedOut',
+        label: '未登录时隐藏主题设置',
+        kind: 'switch',
+        help: '未登录时隐藏顶部主题设置入口，直接访问设置地址也会返回首页。',
+        note: '仅管理员可修改，必须保存到 CFSM 后端才对访客生效；浏览器覆盖不能解除限制。这是界面访问策略，后端保存仍由 CFSM 独立鉴权。',
+      },
+      {
         key: 'hidePriceWhenLoggedOut',
         label: '未登录隐藏价格',
         kind: 'switch',

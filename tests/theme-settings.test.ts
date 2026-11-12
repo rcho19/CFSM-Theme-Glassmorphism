@@ -51,9 +51,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('theme settings schema', () => {
+  it('主题设置访客开关默认关闭，严格解析并完整写入后端快照', () => {
+    expect(resolveThemeSettings({}, {}).hideThemeSettingsWhenLoggedOut).toBe(false)
+    expect(resolveThemeSettings({ hideThemeSettingsWhenLoggedOut: 'true' }, {}).hideThemeSettingsWhenLoggedOut).toBe(false)
+    const settings = resolveThemeSettings({ hideThemeSettingsWhenLoggedOut: true }, {})
+    expect(settings.hideThemeSettingsWhenLoggedOut).toBe(true)
+    expect(createThemeOptionsSnapshot(settings).hideThemeSettingsWhenLoggedOut).toBe(true)
+  })
   it('normalizes the original fields and three new network settings across all layers', () => {
-    expect(THEME_SETTING_KEYS).toHaveLength(51)
-    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(51)
+    expect(THEME_SETTING_KEYS).toHaveLength(52)
+    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(52)
     const backend = {
       themeMode: 'dark',
       offlineNodesLast: false,

@@ -114,17 +114,50 @@ describe('configuration gates are wired to the three pages', () => {
     expect(html).not.toContain('settings-layer-stats')
   })
 
-  it.each(['ready', 'error', 'loading'] as const)('settings renders form after success, failure or last-good config (%s)', async (state) => {
+  it.each(['ready', 'loading'] as const)('settings renders form after success or last-good config (%s)', async (state) => {
     const app = useAppStore()
     app.apiBases = [primary]
     app.state = state
-    app.config = state === 'error' ? null : config('主站')
-    app.error = state === 'error' ? 'network failure' : null
+    app.config = config('主站')
     const html = await renderPage(ThemeSettingsView, '/settings')
     expect(html).not.toContain('aria-label="正在加载主题设置"')
     expect(html).toContain('class="settings-layout"')
     expect(html).toContain('settings-layer-stats')
-    if (state === 'error') expect(html).toContain('无法读取站点配置')
+  })
+
+  it('配置失败且无已确认配置时不暴露设置表单', async () => {
+    const app = useAppStore()
+    app.state = 'error'
+    const html = await renderPage(ThemeSettingsView, '/settings')
+    expect(app.themeSettingsAccess).toBe('blocked')
+    expect(html).not.toContain('class="settings-layout"')
+    expect(html).not.toContain('aria-label="主题设置"')
+  })
+
+  it.each([false, true])('后端设置策略按登录态控制入口和直接访问，登录=%s', async (loggedIn) => {
+    const app = useAppStore()
+    app.state = 'ready'
+    app.config = { ...config('主站'), authorization: loggedIn, themeOptions: { hideThemeSettingsWhenLoggedOut: true } }
+    const home = await renderPage(HomeView, '/')
+    const settings = await renderPage(ThemeSettingsView, '/settings')
+    expect(home.includes('aria-label="主题设置"')).toBe(loggedIn)
+    expect(settings.includes('class="settings-layout"')).toBe(loggedIn)
+    expect(home).toContain('aria-label="刷新数据"')
+  })
+
+  it('本地覆盖和预览草稿不能解除主站设置限制；授权失效后即时收回', () => {
+    const app = useAppStore()
+    const theme = useThemeSettingsStore()
+    app.state = 'ready'
+    app.config = { ...config('主站'), authorization: true, themeOptions: { hideThemeSettingsWhenLoggedOut: true } }
+    theme.hydrateBackend(app.config.themeOptions)
+    theme.draft.hideThemeSettingsWhenLoggedOut = false
+    theme.previewDraft()
+    theme.saveLocal()
+    expect(theme.runtime.hideThemeSettingsWhenLoggedOut).toBe(false)
+    expect(app.themeSettingsAccess).toBe('allowed')
+    app.config = { ...app.config, authorization: false }
+    expect(app.themeSettingsAccess).toBe('blocked')
   })
 
   it.each(['idle', 'loading'] as const)('detail keeps metrics behind skeleton while owning config is %s', async (state) => {

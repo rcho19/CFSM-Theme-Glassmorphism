@@ -39,7 +39,7 @@ const UPSTREAM_GROUPS: ReadonlyArray<{ title: string, keys: readonly string[] }>
   {
     title: '04 · 高级工具与隐私',
     keys: [
-      'homeToolsEnabled', 'hideAdminEntryWhenLoggedOut', 'hidePriceWhenLoggedOut',
+      'homeToolsEnabled', 'hideAdminEntryWhenLoggedOut', 'hideThemeSettingsWhenLoggedOut', 'hidePriceWhenLoggedOut',
       'providerAliases', 'exportSecondaryPassword', 'disablePageAnimation',
     ],
   },

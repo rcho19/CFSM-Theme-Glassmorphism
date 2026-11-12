@@ -17,6 +17,7 @@ const props = withDefaults(defineProps<{
   total?: number
   sourceCount?: number
   adminUrl: string | null
+  settingsVisible?: boolean
   /** 站点自己配置的主题模式：本地没有覆盖时按它描述。 */
   themeMode: ThemeMode
   /** 当前真实呈现的明暗，决定图标。 */
@@ -35,6 +36,7 @@ const props = withDefaults(defineProps<{
   showStatus: true,
   themeOverride: null,
   titlePending: false,
+  settingsVisible: true,
 })
 
 defineEmits<{
@@ -152,7 +154,7 @@ onUnmounted(() => window.removeEventListener('scroll', updateScrolled))
             <AppIcon name="tabler:refresh" :size="18" />
           </button>
         </AppTooltip>
-        <AppTooltip content="主题设置">
+        <AppTooltip v-if="settingsVisible" content="主题设置">
           <RouterLink class="icon-button" :to="{ name: 'theme-settings' }" aria-label="主题设置">
             <AppIcon name="tabler:settings" :size="18" />
           </RouterLink>

@@ -1,6 +1,12 @@
 # 主题设置审计
 
-> 1.3.0-dev.1：原 48 项加 `threeNetEnabled`（默认 false）、`threeNetSparkline`（默认 true）、`threeNetBindings`（默认 `{}` 字符串），共 51 项。绑定键为 JSON 编码的 `[origin, serverId|null]`，最多三条。旧 `dataUpdateInterval` 仅为回滚保留，禁用编辑和轮询；旧记录中的轮询描述不适用于本分支。
+> 1.3.0-dev.1：原 48 项加 `threeNetEnabled`（默认 false）、`threeNetSparkline`（默认 true）、`threeNetBindings`（默认 `{}` 字符串）、`hideThemeSettingsWhenLoggedOut`（默认 false），共 52 项。绑定键为 JSON 编码的 `[origin, serverId|null]`，最多三条。旧 `dataUpdateInterval` 仅为回滚保留，禁用编辑和轮询；旧记录中的轮询描述不适用于本分支。
+
+## 主题设置入口的访客策略
+
+“高级工具与隐私 → 未登录时隐藏主题设置”独立于“隐藏后台入口”。仅管理员可编辑，保存到 CFSM 后端后，主站 `/api/config.theme_options.hideThemeSettingsWhenLoggedOut=true` 且 `authorization` 不为 true 时，首页/详情/设置页的设置入口隐藏，直接进入设置地址返回首页。确认配置前不显示入口或表单，配置失败且没有已确认配置时也不开放设置页。
+
+该策略只读取后端原始配置，浏览器覆盖、即时预览及副来源配置不能解除它；保存到此浏览器不会改变站点的访客策略。登录后仍可进入设置关闭该项。默认 false 保持旧配置行为，完整后端快照包含新键，旧版可忽略；恢复旧版也会失去新入口限制。该项只是前端界面策略，不是敏感配置的保密边界，不能代替服务端 `/api/theme_options` 的管理员鉴权。
 
 > 基线：Komari Glassmorphism v3.3.7 的 `komari-theme.json`，提交 bf8376587c720de915ac48789a8a180357c762d6。状态描述在 CFSM 上的最终适配可行性，不等同于当前实现进度。
 

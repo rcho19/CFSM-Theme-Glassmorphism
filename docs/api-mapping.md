@@ -4,6 +4,8 @@
 
 ## 唯一运行时协议
 
+主题设置访客策略新增后端 `theme_options.hideThemeSettingsWhenLoggedOut` 布尔键，仍通过现有 `/api/config` 读取及 `/api/theme_options` 完整快照保存；没有新增端点或请求。入口判断采用主站配置中的 `authorization`，不从本地 JWT 的存在推断登录，也不读取副来源授权。快照的已知字段总数增为 52，未知字段保留规则不变。
+
 本主题只调用 CF-Server-Monitor 官方第三方主题接口；唯一的例外是 v1.1.7 起的公开日汇率（见下方「第三方汇率数据源」），它不经过 CFSM。Komari 的 `/api/public`、`/api/nodes`、`/api/clients`、`/rpc2` 以及 `common:*`、`public:*`、`admin:*` RPC 命名空间不得进入生产包。
 
 apiBase 的来源是 HTML 中可选的 `<meta name="apiBase" content="https://a.example,https://b.example">`；未配置时使用当前页面 origin。每个值只保留 HTTP(S) origin，去重后独立请求。不存在额外的 `config.json`。

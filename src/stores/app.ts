@@ -4,6 +4,7 @@ import type { SiteConfig } from '@/types/cfsm'
 import { adminUrl, fetchSiteConfig, getApiBases, onTurnstileRejected, verifyTurnstileToken } from '@/services/cfsm'
 import { turnstileChallengeSiteKey } from '@/domain/turnstile'
 import { onAuthorizationRejected } from '@/services/cfsm/http'
+import { resolveThemeSettingsAccess } from '@/domain/theme-settings-access'
 
 export type LoadState = 'idle' | 'loading' | 'ready' | 'partial' | 'error'
 
@@ -36,6 +37,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const primaryBase = computed(() => apiBases.value[0] ?? null)
+  const themeSettingsAccess = computed(() => resolveThemeSettingsAccess(config.value, state.value))
   const administrationUrl = computed(() => (
     primaryBase.value ? adminUrl(primaryBase.value) : null
   ))
@@ -147,6 +149,7 @@ export const useAppStore = defineStore('app', () => {
     state,
     error,
     primaryBase,
+    themeSettingsAccess,
     administrationUrl,
     turnstileSiteKey,
     credentialRevision,

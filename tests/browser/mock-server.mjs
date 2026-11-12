@@ -6,6 +6,7 @@ import { extname, resolve } from 'node:path'
 const now = Date.now()
 // 稀疏实时验收：两分钟一个真实样本，并使用秒级历史时间戳。
 const sparseLive = process.env.CFSM_FIXTURE_SPARSE_LIVE === '1'
+const settingsPolicy = process.env.CFSM_FIXTURE_SETTINGS_POLICY
 const counts = {}
 const data = {
   id: 'fixture-1', name: '本地合成测试节点', server_group: '验收数据', region: 'JP',
@@ -17,6 +18,7 @@ const data = {
   loss: Array.from({ length: 20 }, (_, i) => ({ ts: now - (20 - i) * 360000, ct: i === 8 ? 100 : 0, cu: 0, cm: i % 5 * 2 })),
 }
 let themeOptions = { threeNetEnabled: true, threeNetSparkline: true, hideEarth: true, themeMode: 'light' }
+if (settingsPolicy === 'guest' || settingsPolicy === 'admin') themeOptions.hideThemeSettingsWhenLoggedOut = true
 function frame(value) {
   const body = Buffer.from(JSON.stringify(value))
   const header = body.length < 126 ? Buffer.from([129, body.length]) : Buffer.from([129,126,body.length>>8,body.length&255])
@@ -27,7 +29,7 @@ const server = createServer(async (req, res) => {
   counts[url.pathname] = (counts[url.pathname] ?? 0) + 1
   res.setHeader('Cache-Control','no-store')
   const json = (value) => { res.setHeader('Content-Type','application/json');res.end(JSON.stringify(value)) }
-  if (url.pathname === '/api/config') return json({ site_title: '本地主题验收', version: 'fixture', is_public: true, authorization: false, turnstile_enabled: false, custom_ct_name: '电信', custom_cu_name: '联通', custom_cm_name: '移动', theme_options: themeOptions })
+  if (url.pathname === '/api/config') return json({ site_title: '本地主题验收', version: 'fixture', is_public: true, authorization: settingsPolicy === 'admin', turnstile_enabled: false, custom_ct_name: '电信', custom_cu_name: '联通', custom_cm_name: '移动', theme_options: themeOptions })
   if (url.pathname === '/api/servers') return json({ servers:[data], stats:{ total:1,online:1,offline:0 }, sysConfig:{show_three_net_details:true,show_price:true,show_expire:true,show_tf:true} })
   if (url.pathname === '/api/server') return json(data)
   if (url.pathname === '/api/history/all') return json(sparseLive
