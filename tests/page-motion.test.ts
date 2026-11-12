@@ -158,9 +158,9 @@ describe('接线与样式', () => {
     // 分组：上游每个分组一个 TabsContent，切换时网格整个卸载重挂，旧卡片当帧消失、新卡片按 appear 依次进场。
     // 只换卡片 key 的话，Vue 要等下一帧才移走离场卡片，切换瞬间会多出一帧新旧卡片共存。
     expect(home).toMatch(/<TransitionGroup\n\s+v-else-if="viewMode === 'card'"\n\s+:key="selectedGroup"/)
-    // 快捷筛选：key 含快捷筛选，切换时旧卡片按离场过渡淡出、新卡片依次进场；
+    // 成员筛选切换时旧卡片淡出、新卡片进场；纯排序保持身份，避免重复占位。
     // 实时数据、搜索与排序不改变 key，卡片保持原组件。
-    expect(home).toContain("return `${selectedGroup.value}-${activeQuickFilter.value ?? 'all'}-${server.key}`")
+    expect(home).toContain('return nodeCardTransitionKey(selectedGroup.value, activeQuickFilter.value, server.key)')
     expect(home).toContain(':key="cardTransitionKey(server)"')
     expect(home).not.toContain(':key="server.key"\n                :server="server"')
   })

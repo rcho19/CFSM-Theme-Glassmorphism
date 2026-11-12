@@ -22,6 +22,7 @@ import {
   generalFinanceContext,
   isExpiring,
   isHighLoad,
+  nodeCardTransitionKey,
   resolveQuickControlKeys,
   type QuickControlKey,
 } from '@/domain/theme-presentation'
@@ -298,12 +299,12 @@ function cardStyle(index: number): Record<string, string> {
 }
 
 /**
- * Komari getNodeItemTransitionKey：key 含当前分组与快捷筛选。切换快捷筛选时整组卡片换新 key，
+ * key 含当前分组与成员筛选。总流量、峰值等纯排序不换 key；切换成员筛选时整组卡片换新 key，
  * 旧卡片按离场过渡淡出、新卡片依次进场；切换分组时整个网格随外层 key 重新挂载（见模板）。
  * 实时数据更新、搜索与排序不改变 key，卡片保持原组件，换位时按 move 过渡滑到新位置。
  */
 function cardTransitionKey(server: GlassServer): string {
-  return `${selectedGroup.value}-${activeQuickFilter.value ?? 'all'}-${server.key}`
+  return nodeCardTransitionKey(selectedGroup.value, activeQuickFilter.value, server.key)
 }
 
 function quickAction(key: QuickControlKey): void {

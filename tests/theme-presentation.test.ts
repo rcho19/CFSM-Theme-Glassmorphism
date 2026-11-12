@@ -6,6 +6,7 @@ import {
   isExpiring,
   isHighLoad,
   isTrafficWarning,
+  nodeCardTransitionKey,
   parseTrafficLimitBytes,
   remainingValue,
   resolveChartFamilies,
@@ -21,6 +22,22 @@ import { cloneThemeSettings, DEFAULT_THEME_SETTINGS } from '@/theme/settings'
 import type { GlassServer } from '@/types/glassmorphism'
 
 const source = { base: 'https://status.example', label: 'status.example' }
+
+describe('卡片排序身份', () => {
+  it.each(['totalTraffic', 'upload', 'download', 'peak'] as const)('%s 与默认顺序复用同一节点', (sort) => {
+    expect(nodeCardTransitionKey('all', sort, 'source:node')).toBe(nodeCardTransitionKey('all', null, 'source:node'))
+  })
+
+  it('成员筛选、分组和不同来源节点仍保留各自身份', () => {
+    const original = nodeCardTransitionKey('all', null, 'source:node')
+    for (const filter of ['favorite', 'offline', 'highLoad', 'expiring'] as const) {
+      expect(nodeCardTransitionKey('all', filter, 'source:node')).not.toBe(original)
+    }
+    expect(nodeCardTransitionKey('other', null, 'source:node')).not.toBe(original)
+    expect(nodeCardTransitionKey('all', null, 'other-source:node')).not.toBe(original)
+    expect(nodeCardTransitionKey('a-b', null, 'c')).not.toBe(nodeCardTransitionKey('a', null, 'b-c'))
+  })
+})
 
 function glass(overrides: Partial<GlassServer> = {}): GlassServer {
   return {
