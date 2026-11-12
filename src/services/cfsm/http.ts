@@ -1,5 +1,6 @@
 import { apiUrl, readStorage, STORAGE_KEYS, writeStorage } from './config'
 import { isRecord } from './adapters'
+import { isCredentialOrigin, maySendTurnstile } from './credential-policy'
 
 export interface CfsmRequestOptions {
   base: string
@@ -11,6 +12,7 @@ export interface CfsmRequestOptions {
   storage?: Storage
   includeAuth?: boolean
   includeTurnstile?: boolean
+  pageOrigin?: string
 }
 
 export class CfsmRequestError extends Error {
@@ -36,7 +38,7 @@ function requestHeaders(options: CfsmRequestOptions): Headers {
   const headers = new Headers({ Accept: 'application/json' })
   if (options.method === 'POST') headers.set('Content-Type', 'application/json')
 
-  if (options.includeAuth !== false) {
+  if (isCredentialOrigin(options.base, options.pageOrigin) && options.includeAuth !== false) {
     const token = readStorage(STORAGE_KEYS.jwt, options.storage)
     if (token) headers.set('Authorization', 'Bearer ' + token)
   }
@@ -45,7 +47,7 @@ function requestHeaders(options: CfsmRequestOptions): Headers {
    * 与 CFSM 默认前端 `createHeaders` 一致：两者都有就都带。CFSM 先校验 Verified，失效时再校验 Token；
    * 只带其一时，残留的过期凭据会挡住刚拿到的新令牌。
    */
-  if (options.includeTurnstile !== false) {
+  if (isCredentialOrigin(options.base, options.pageOrigin) && maySendTurnstile(options.base) && options.includeTurnstile !== false) {
     const verified = readStorage(STORAGE_KEYS.turnstileVerified, options.storage)
     const token = readStorage(STORAGE_KEYS.turnstileToken, options.storage)
     if (verified) headers.set('X-Turnstile-Verified', verified)
@@ -57,6 +59,11 @@ function requestHeaders(options: CfsmRequestOptions): Headers {
 
 type TurnstileRejectionListener = () => void
 const turnstileRejectionListeners = new Set<TurnstileRejectionListener>()
+const authorizationRejectionListeners = new Set<() => void>()
+export function onAuthorizationRejected(listener: () => void): () => void {
+  authorizationRejectionListeners.add(listener)
+  return () => { authorizationRejectionListeners.delete(listener) }
+}
 
 /**
  * CFSM 开启全局 Turnstile 后，凭据缺失或过期的 API 请求返回 403。
@@ -110,6 +117,14 @@ export async function cfsmRequest(
   const controller = new AbortController()
   const timeoutMs = options.timeoutMs ?? 15_000
   const fetcher = options.fetcher ?? fetch
+  const ownsCredentials = isCredentialOrigin(options.base, options.pageOrigin)
+  const target = apiUrl(options.base, path)
+  if (new URL(target).origin !== new URL(options.base).origin) {
+    throw new CfsmRequestError('API path cannot change its owning origin', { path, code: 'untrustedOrigin' })
+  }
+  if (options.method === 'POST' && !ownsCredentials) {
+    throw new CfsmRequestError('Cross-origin theme writes are disabled', { path, code: 'untrustedOrigin' })
+  }
   const abortFromCaller = (): void => controller.abort(options.signal?.reason)
   if (options.signal?.aborted) abortFromCaller()
   else options.signal?.addEventListener('abort', abortFromCaller, { once: true })
@@ -118,11 +133,13 @@ export async function cfsmRequest(
   let response: Response
   let payload: unknown
   try {
-    response = await fetcher(apiUrl(options.base, path), {
+    response = await fetcher(target, {
       method: options.method ?? 'GET',
       headers: requestHeaders(options),
       body: options.method === 'POST' ? JSON.stringify(options.body) : undefined,
-      credentials: 'include',
+      credentials: ownsCredentials ? 'include' : 'omit',
+      referrerPolicy: 'no-referrer',
+      redirect: 'error',
       signal: controller.signal,
     })
     // Receiving headers is not completion: the body can still stall or be cancelled.
@@ -138,8 +155,11 @@ export async function cfsmRequest(
     options.signal?.removeEventListener('abort', abortFromCaller)
   }
 
-  if (response.status === 401) writeStorage(STORAGE_KEYS.jwt, null, options.storage)
-  if (response.status === 403) {
+  if (ownsCredentials && response.status === 401) {
+    writeStorage(STORAGE_KEYS.jwt, null, options.storage)
+    for (const listener of authorizationRejectionListeners) listener()
+  }
+  if (ownsCredentials && response.status === 403) {
     writeStorage(STORAGE_KEYS.turnstileToken, null, options.storage)
     writeStorage(STORAGE_KEYS.turnstileVerified, null, options.storage)
     for (const listener of turnstileRejectionListeners) listener()
@@ -155,7 +175,7 @@ export async function cfsmRequest(
     })
   }
 
-  if (isRecord(payload) && typeof payload.turnstile_verified === 'string') {
+  if (ownsCredentials && isRecord(payload) && typeof payload.turnstile_verified === 'string') {
     writeStorage(STORAGE_KEYS.turnstileVerified, payload.turnstile_verified, options.storage)
     writeStorage(STORAGE_KEYS.turnstileToken, null, options.storage)
   }

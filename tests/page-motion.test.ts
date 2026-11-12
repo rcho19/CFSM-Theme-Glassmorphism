@@ -132,11 +132,11 @@ describe('接线与样式', () => {
     expect(routerSource).toContain('installNavigationMotion(router)')
   })
 
-  it('首页可被 KeepAlive 匹配，返回时不重连、不重拉，只恢复标题', () => {
+  it('首页保留视图状态，进入独立详情时释放全量订阅，返回只重建连接', () => {
     expect(home).toContain("defineOptions({ name: 'HomeView' })")
-    expect(home).toMatch(/onActivated\(\(\) => \{\n\s+viewActive = true\n\s+if \(siteTitle\.value\) document\.title = siteTitle\.value\n\}\)/)
+    expect(home).toMatch(/onActivated\(\(\) => \{\n\s+viewActive = true\n\s+if \(homeReady\) realtime.start\(refreshRest\)/)
     // 离开首页只记录不在前台，不停止实时连接；实时连接只在真正卸载时释放。
-    expect(home).toMatch(/onDeactivated\(\(\) => \{\n\s+viewActive = false\n\}\)/)
+    expect(home).toMatch(/onDeactivated\(\(\) => \{\n\s+viewActive = false\n\s+realtime.stop\(\)/)
     expect(home).toContain('onUnmounted(() => realtime.stop())')
   })
 

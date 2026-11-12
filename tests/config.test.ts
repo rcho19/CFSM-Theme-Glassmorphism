@@ -24,7 +24,7 @@ describe('CFSM API base configuration', () => {
     expect(apiSource('https://status.example/').base).toBe('https://status.example')
     expect(webSocketBase('https://status.example')).toBe('wss://status.example')
     expect(webSocketBase('http://localhost:8787')).toBe('ws://localhost:8787')
-    expect(adminUrl('https://status.example')).toBe('https://status.example/admin#admin')
+      expect(adminUrl('https://status.example')).toBe('https://status.example/admin#/admin')
   })
 })
 

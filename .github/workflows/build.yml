@@ -21,12 +21,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -43,8 +43,23 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Configure public deployment metadata
+        env:
+          API_BASE: ${{ secrets.API_BASE }}
+          TITLE: ${{ secrets.TITLE }}
+          BACKGROUND_IMAGE: ${{ secrets.BACKGROUND_IMAGE }}
+          CSP_API: ${{ secrets.CSP_API }}
+          CSP_STATIC: ${{ secrets.CSP_STATIC }}
+        run: node scripts/configure-dist.mjs
+
+      - name: Audit dependencies
+        run: bun audit
+
       - name: Validate dist
         run: bun run validate:dist
+
+      - name: Scan source and distribution for credential material
+        run: bun run verify:security
 
       - name: Resolve artifact name
         id: artifact
@@ -56,7 +71,7 @@ jobs:
         run: zip -r "../${{ steps.artifact.outputs.file }}" index.html assets
 
       - name: Upload theme archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ steps.artifact.outputs.file }}
           path: ${{ steps.artifact.outputs.file }}
@@ -71,22 +86,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: publish-preview-main
+      group: publish-dist
       cancel-in-progress: false
     permissions:
       contents: write
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Download verified theme archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ${{ needs.verify.outputs.artifact-name }}
           path: archive
 
-      - name: Publish installable main preview
+      - name: Publish append-only dist branch
         run: node scripts/publish-preview.mjs "archive/${{ needs.verify.outputs.artifact-name }}" "$GITHUB_SHA"
 
   # CFSM 主题商店支持「自定义主题 URL」，它把
@@ -106,12 +121,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
       - name: Download verified theme archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ${{ needs.verify.outputs.artifact-name }}
           path: archive
@@ -185,15 +200,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.4
 
       - name: Download verified theme archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ${{ needs.verify.outputs.artifact-name }}
           path: .
@@ -237,46 +252,3 @@ jobs:
           ${{ steps.release.outputs.flags }}
           --title "CFSM Glassmorphism $GITHUB_REF_NAME"
           --notes-file "${{ steps.release.outputs.notes }}"
-
-  # Release body 只在 `gh release create` 那一刻写入，之后改 docs/releases/*.md
-  # 不会回写到已发布的 Release 页面。这个 job 让仓库文件成为唯一事实来源：
-  # 每次 main 有推送就把已发布 Release 的正文与对应文件对齐，
-  # 用的是 Actions 自带的 GITHUB_TOKEN，不需要任何人另外提供 PAT。
-  # 只改正文，不碰 tag、附件、prerelease/latest 标记与 theme-dist。
-  release-notes:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Sync published release bodies with docs/releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          updated=0
-          for notes in docs/releases/*.md; do
-            tag="$(basename "$notes" .md)"
-            if ! gh release view "$tag" --json tagName >/dev/null 2>&1; then
-              echo "skip    $tag (not published yet)"
-              continue
-            fi
-            # GitHub 存的正文是 CRLF，文件是 LF，比较前统一去掉 CR，
-            # 否则每次都会判定为「有变化」而白改一遍。
-            current="$(gh release view "$tag" --json body --jq .body | tr -d '\r')"
-            desired="$(cat "$notes")"
-            if [[ "$current" == "$desired" ]]; then
-              echo "current $tag"
-              continue
-            fi
-            gh release edit "$tag" --notes-file "$notes"
-            echo "updated $tag"
-            updated=$((updated + 1))
-          done
-          echo "release notes synced; $updated release(s) updated"

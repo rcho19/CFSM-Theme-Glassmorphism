@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { SiteConfig } from '@/types/cfsm'
 import { adminUrl, fetchSiteConfig, getApiBases, onTurnstileRejected, verifyTurnstileToken } from '@/services/cfsm'
 import { turnstileChallengeSiteKey } from '@/domain/turnstile'
+import { onAuthorizationRejected } from '@/services/cfsm/http'
 
 export type LoadState = 'idle' | 'loading' | 'ready' | 'partial' | 'error'
 
@@ -13,10 +14,26 @@ function errorMessage(error: unknown): string {
 export const useAppStore = defineStore('app', () => {
   const apiBases = ref<string[]>([])
   const config = ref<SiteConfig | null>(null)
+  const sourceConfigs = ref<Record<string, SiteConfig>>({})
   const state = ref<LoadState>('idle')
   const error = ref<string | null>(null)
   let initializeInFlight: Promise<void> | null = null
   let initializeRevision = 0
+  const sourceRequests = new Map<string, Promise<SiteConfig>>()
+  const sourceRevisions = new Map<string, number>()
+  function loadSourceConfig(base: string): Promise<SiteConfig> {
+    const cached = sourceConfigs.value[base]
+    if (cached) return Promise.resolve(cached)
+    const inFlight = sourceRequests.get(base)
+    if (inFlight) return inFlight
+    const expected = sourceRevisions.get(base) ?? 0
+    const pending = fetchSiteConfig(base).then((result) => {
+      if ((sourceRevisions.get(base) ?? 0) === expected) sourceConfigs.value = { ...sourceConfigs.value, [base]: result }
+      return result
+    }).finally(() => { sourceRequests.delete(base) })
+    sourceRequests.set(base, pending)
+    return pending
+  }
 
   const primaryBase = computed(() => apiBases.value[0] ?? null)
   const administrationUrl = computed(() => (
@@ -32,6 +49,14 @@ export const useAppStore = defineStore('app', () => {
   const turnstileSiteKey = computed(() => turnstileChallengeSiteKey(config.value, turnstileRejected.value))
   onTurnstileRejected(() => {
     turnstileRejected.value = true
+  })
+  let redirectedToLogin = false
+  onAuthorizationRejected(() => {
+    if (config.value) config.value = { ...config.value, authorization: false }
+    if (config.value?.isPublic !== true && !redirectedToLogin && typeof window !== 'undefined' && primaryBase.value) {
+      redirectedToLogin = true
+      window.location.assign(adminUrl(primaryBase.value))
+    }
   })
 
   /**
@@ -65,10 +90,15 @@ export const useAppStore = defineStore('app', () => {
       apiBases.value = getApiBases()
       const base = apiBases.value[0]
       if (!base) throw new Error('No CFSM API base is configured')
-      const nextConfig = await fetchSiteConfig(base)
+      const nextConfig = await loadSourceConfig(base)
       if (expectedRevision !== initializeRevision) return
       config.value = nextConfig
       state.value = 'ready'
+      sourceConfigs.value = { ...sourceConfigs.value, [base]: nextConfig }
+      await Promise.allSettled(apiBases.value.slice(1).map(async (sourceBase) => {
+        const sourceConfig = await loadSourceConfig(sourceBase)
+        if (expectedRevision === initializeRevision) sourceConfigs.value = { ...sourceConfigs.value, [sourceBase]: sourceConfig }
+      }))
     } catch (reason) {
       if (expectedRevision !== initializeRevision) return
       // 手动刷新失败时保留上一次真实配置；冷启动本来就是 null，仍按失败态走 fallback。
@@ -78,6 +108,8 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function initialize(): Promise<void> {
+    // 官方主题约束：配置只在本页面生命周期首次加载；保存后用 applyConfig 更新。
+    if (state.value === 'ready' && config.value) return Promise.resolve()
     // 首页离开时请求不会被销毁；详情/设置若在它完成前接手，复用同一个配置请求。
     if (initializeInFlight) return initializeInFlight
     const expectedRevision = ++initializeRevision
@@ -99,6 +131,10 @@ export const useAppStore = defineStore('app', () => {
     initializeRevision += 1
     initializeInFlight = null
     config.value = nextConfig
+    if (primaryBase.value) {
+      sourceRevisions.set(primaryBase.value, (sourceRevisions.get(primaryBase.value) ?? 0) + 1)
+      sourceConfigs.value = { ...sourceConfigs.value, [primaryBase.value]: nextConfig }
+    }
     state.value = 'ready'
     error.value = null
   }
@@ -106,6 +142,8 @@ export const useAppStore = defineStore('app', () => {
   return {
     apiBases,
     config,
+    sourceConfigs,
+    loadSourceConfig,
     state,
     error,
     primaryBase,

@@ -6,9 +6,7 @@ import {
 } from './websocket'
 import type { VisibilitySource } from './dashboard-realtime'
 
-const DEFAULT_FALLBACK_INTERVAL_MS = 60_000
 /** 与首页回退轮询同一条下限，理由见 `dashboard-realtime.ts`。 */
-const MIN_FALLBACK_INTERVAL_MS = 5_000
 
 type IntervalHandle = ReturnType<typeof setInterval>
 
@@ -57,15 +55,6 @@ export function createDetailRealtime(options: DetailRealtimeOptions): DetailReal
   const createSocket = options.createSocket ?? createCfsmSocket
   const documentRef = options.documentRef ?? defaultDocument()
   const scheduler = options.scheduler ?? defaultScheduler
-  function fallbackIntervalMs(): number {
-    const configured = typeof options.fallbackIntervalMs === 'function'
-      ? options.fallbackIntervalMs()
-      : options.fallbackIntervalMs
-    const requested = typeof configured === 'number' && Number.isFinite(configured)
-      ? configured
-      : DEFAULT_FALLBACK_INTERVAL_MS
-    return Math.max(requested, MIN_FALLBACK_INTERVAL_MS)
-  }
   let connection: CfsmSocketConnection | null = null
   let fallbackTimer: IntervalHandle | null = null
   let fallbackActive = false
@@ -89,12 +78,8 @@ export function createDetailRealtime(options: DetailRealtimeOptions): DetailReal
   }
 
   function startFallback(): void {
-    if (fallbackTimer !== null || disposed || timedOut || paused || !visible()) return
-    fallbackActive = true
-    options.onFallbackChange(true)
-    fallbackTimer = scheduler.setInterval(() => {
-      void refreshRest()
-    }, fallbackIntervalMs())
+    // 官方额度边界：详情断线也不允许定时 REST 回退。
+    stopFallback()
   }
 
   async function refreshRest(): Promise<void> {

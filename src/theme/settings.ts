@@ -12,6 +12,9 @@ export type EarthRenderer = 'realistic' | 'cobe' | 'tiled'
 export type BackgroundType = 'image' | 'video'
 
 export interface ThemeSettings {
+  threeNetEnabled: boolean
+  threeNetSparkline: boolean
+  threeNetBindings: string
   themeMode: ThemeMode
   dataUpdateInterval: number
   rpcTransportMode: 'http'
@@ -63,6 +66,9 @@ export interface ThemeSettings {
 }
 
 export const THEME_SETTING_KEYS = [
+  'threeNetEnabled',
+  'threeNetSparkline',
+  'threeNetBindings',
   'themeMode',
   'dataUpdateInterval',
   'rpcTransportMode',
@@ -143,6 +149,9 @@ const DEFAULT_CUSTOM_COLORS: GlassCustomColors = {
 }
 
 export const DEFAULT_THEME_SETTINGS: Readonly<ThemeSettings> = Object.freeze({
+  threeNetEnabled: false,
+  threeNetSparkline: true,
+  threeNetBindings: '{}',
   themeMode: 'beijing',
   dataUpdateInterval: 5,
   rpcTransportMode: 'http',
@@ -393,6 +402,9 @@ export function normalizeThemeSettingsLayer(
   const normalizedThemeMode = input.themeMode === 'auto' ? 'system' : input.themeMode
 
   return {
+    threeNetEnabled: booleanValue(input.threeNetEnabled, fallback.threeNetEnabled),
+    threeNetSparkline: booleanValue(input.threeNetSparkline, fallback.threeNetSparkline),
+    threeNetBindings: textValue(input.threeNetBindings, fallback.threeNetBindings),
     themeMode: oneOf(normalizedThemeMode, ['beijing', 'system', 'light', 'dark'], fallback.themeMode),
     dataUpdateInterval: numberValue(input.dataUpdateInterval, fallback.dataUpdateInterval, 5, 60, true),
     rpcTransportMode: 'http',
@@ -459,6 +471,9 @@ export function resolveThemeSettings(
 
 export function serializeThemeSettings(settings: ThemeSettings): Record<string, unknown> {
   return {
+    threeNetEnabled: settings.threeNetEnabled,
+    threeNetSparkline: settings.threeNetSparkline,
+    threeNetBindings: settings.threeNetBindings,
     themeMode: settings.themeMode,
     dataUpdateInterval: settings.dataUpdateInterval,
     rpcTransportMode: 'http',
@@ -525,6 +540,14 @@ export function createThemeOptionsSnapshot(
 
 export function validateThemeSettingsDraft(value: ThemeSettings): ThemeDraftIssue[] {
   const issues: ThemeDraftIssue[] = []
+  try {
+    const bindings: unknown = JSON.parse(value.threeNetBindings)
+    if (!isRecord(bindings) || Object.keys(bindings).length > 5000 || Object.values(bindings).some((targets) => !Array.isArray(targets) || targets.length > 3 || targets.some((target: unknown) => typeof target !== 'string' || target.length > 64))) {
+      issues.push({ key: 'threeNetBindings', message: '线路绑定必须是 JSON 对象，每组最多三个线路字段。' })
+    }
+  } catch {
+    issues.push({ key: 'threeNetBindings', message: '线路绑定 JSON 格式无效。' })
+  }
   if (value.glassColorPreset === '自定义' && parseGlassCustomColors(value.glassCustomColors) === null) {
     issues.push({
       key: 'glassCustomColors',

@@ -1,5 +1,7 @@
 # 主题设置审计
 
+> 1.3.0-dev.1：原 48 项加 `threeNetEnabled`（默认 false）、`threeNetSparkline`（默认 true）、`threeNetBindings`（默认 `{}` 字符串），共 51 项。绑定键为 JSON 编码的 `[origin, serverId|null]`，最多三条。旧 `dataUpdateInterval` 仅为回滚保留，禁用编辑和轮询；旧记录中的轮询描述不适用于本分支。
+
 > 基线：Komari Glassmorphism v3.3.7 的 `komari-theme.json`，提交 bf8376587c720de915ac48789a8a180357c762d6。状态描述在 CFSM 上的最终适配可行性，不等同于当前实现进度。
 
 共审计 **48** 个设置：**✅ 一致 28 个、🟢 等价 11 个、🟡 降级 7 个、🔴 不支持 2 个**。

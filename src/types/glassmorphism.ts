@@ -38,6 +38,8 @@ export interface GlassHistorySummary {
 }
 
 export interface GlassServer {
+  windowUpdatedAt?: number
+  showThreeNet?: boolean
   key: string
   id: string
   sourceBase: string

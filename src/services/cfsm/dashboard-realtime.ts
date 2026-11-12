@@ -5,20 +5,8 @@ import {
   type CfsmSocketOptions,
 } from './websocket'
 
-const DEFAULT_FALLBACK_INTERVAL_MS = 60_000
-/*
- * 主题设置「数据更新间隔」驱动这个回退轮询。CFSM 的实时数据由 WebSocket 推送，
- * 推送节奏跟随站点自己的上报配置（某站点实测每节点约 2 秒一次），主题改不了，
- * 也和这里无关：只有连接不可用时才会走这条 REST 回退。
- *
- * 下限 5 秒的理由是回退轮询的开销：每跳一次要重取站点配置与节点列表，都是 D1 查询。
- * （此处曾写作「与服务端批次相同的 5 秒」，依据是 POST 上报路径的合并窗口常量，
- * 与 WSS 推送无关，已更正。）
- */
-const MIN_FALLBACK_INTERVAL_MS = 5_000
+// 依据 CFSM 主题额度约束，仅通过 WS 实时更新；REST 只用于允许的生命周期事件。
 const DEFAULT_SAMPLE_SETTLE_DELAY_MS = 1_000
-const MIN_SAMPLE_SETTLE_DELAY_MS = 250
-const MAX_SAMPLE_SETTLE_DELAY_MS = 1_000
 
 type IntervalHandle = ReturnType<typeof setInterval>
 type TimeoutHandle = ReturnType<typeof setTimeout>
@@ -87,22 +75,7 @@ export function createDashboardRealtime(
   const createSocket = options.createSocket ?? createCfsmSocket
   const documentRef = options.documentRef ?? defaultDocument()
   const scheduler = options.scheduler ?? defaultScheduler
-  function sampleSettleDelayMs(): number {
-    const configured = options.getSampleSettleDelayMs?.()
-    const requested = typeof configured === 'number' && Number.isFinite(configured)
-      ? Math.round(configured)
-      : DEFAULT_SAMPLE_SETTLE_DELAY_MS
-    return Math.min(MAX_SAMPLE_SETTLE_DELAY_MS, Math.max(MIN_SAMPLE_SETTLE_DELAY_MS, requested))
-  }
-  function fallbackIntervalMs(): number {
-    const configured = typeof options.fallbackIntervalMs === 'function'
-      ? options.fallbackIntervalMs()
-      : options.fallbackIntervalMs
-    const requested = typeof configured === 'number' && Number.isFinite(configured)
-      ? configured
-      : DEFAULT_FALLBACK_INTERVAL_MS
-    return Math.max(requested, MIN_FALLBACK_INTERVAL_MS)
-  }
+  function sampleSettleDelayMs(): number { return DEFAULT_SAMPLE_SETTLE_DELAY_MS }
   const connections = new Map<string, CfsmSocketConnection>()
   const states = new Map<string, CfsmSocketState>()
   const pendingSamples = new Map<string, CfsmRealtimeSample[]>()
@@ -176,23 +149,8 @@ export function createDashboardRealtime(
   }
 
   function updateFallback(): void {
-    const needsFallback = started
-      && !disposed
-      && visible()
-      && !timedOut
-      && !paused
-      && [...states.values()].some((state) => state === 'backoff' || state === 'unavailable')
-
-    if (!needsFallback) {
-      stopFallback()
-      return
-    }
-    if (fallbackTimer !== null) return
-    fallbackActive = true
-    options.onFallbackChange(true)
-    fallbackTimer = scheduler.setInterval(() => {
-      void refreshAndSync()
-    }, fallbackIntervalMs())
+    // 官方额度边界：断线只走 WS 指数退避，不启动 REST 轮询。
+    stopFallback()
   }
 
   function closeConnections(): void {

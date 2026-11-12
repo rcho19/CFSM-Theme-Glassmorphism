@@ -195,11 +195,13 @@ describe('两种状态的绘图数组', () => {
     }
   })
 
-  it('纵轴不写死上下限，遮蔽后的数据里不再有尖峰值，范围随可见数据收缩', () => {
+  it('纵轴使用稳定基线，遮蔽后的范围随可见数据收缩', () => {
     const on = pingChartOption(base({ hideSpikes: true }))
     const axis = on.yAxis as Record<string, unknown>
-    expect(axis.min).toBeUndefined()
-    expect(axis.max).toBeUndefined()
+    expect(typeof axis.min).toBe('number')
+    expect(typeof axis.max).toBe('number')
+    expect(Number(axis.min)).toBeLessThan(Number(axis.max))
+    expect(Number(axis.max)).toBeLessThan(Number((pingChartOption(base()).yAxis as Record<string, unknown>).max))
     expect(axis.type).toBe('value')
     const visibleMax = Math.max(...(on.series as unknown as LooseSeries[])
       .flatMap((item) => item.data.filter((value): value is number => value !== null)))

@@ -99,6 +99,13 @@ const BACKGROUND_TYPE_OPTIONS: readonly ThemeFieldOption[] = [
 
 export const THEME_SETTINGS_FORM: readonly ThemeFieldGroup[] = [
   {
+    title: '三网 · 历史窗口',
+    fields: [
+      { key: 'threeNetEnabled', label: '启用新版三网', kind: 'switch', help: '按线路展示 CFSM 两小时采样窗口；后台关闭三网详情时隐藏。' },
+      { key: 'threeNetSparkline', label: '小曲线模式', kind: 'switch', help: '关闭后显示采样色块，数值仍使用同一窗口。', enabled: (settings) => settings.threeNetEnabled },
+    ],
+  },
+  {
     title: '01 · 基础与外观',
     fields: [
       {
@@ -116,8 +123,9 @@ export const THEME_SETTINGS_FORM: readonly ThemeFieldGroup[] = [
         min: 5,
         max: 60,
         unit: '秒',
-        help: '只在实时连接不可用时生效：页面改为按这个间隔定时刷新数据。',
-        note: '实时数据由 CFSM 主动推送，频率取决于站点自己的上报设置，主题无法修改，本项也不影响它。每次定时刷新都要重新读取站点配置与节点列表，因此最短 5 秒。',
+        help: '旧配置兼容字段；依据 CFSM 额度规范，自动 REST 轮询已禁用。实时数据由 WS 推送。',
+        note: '保留旧值供回滚使用，本版不能通过该字段开启轮询。',
+        enabled: () => false,
       },
       {
         key: 'defaultViewMode',
@@ -252,7 +260,7 @@ export const THEME_SETTINGS_FORM: readonly ThemeFieldGroup[] = [
         key: 'hideAdminEntryWhenLoggedOut',
         label: '隐藏后台入口',
         kind: 'switch',
-        help: '未登录时隐藏顶部后台管理入口；登录后仍指向 /admin#admin。',
+        help: '未登录时隐藏顶部后台管理入口；登录后仍指向 /admin#/admin。',
       },
       {
         key: 'hidePriceWhenLoggedOut',

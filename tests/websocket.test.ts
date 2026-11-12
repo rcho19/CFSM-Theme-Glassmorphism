@@ -56,6 +56,26 @@ function memoryStorage(values: Record<string, string>): Storage {
 afterEach(() => vi.useRealTimers())
 
 describe('CFSM WebSocket transport', () => {
+  it('stops after ten failed retries instead of reconnecting forever', () => {
+    vi.useFakeTimers()
+    const sockets: FakeSocket[] = []
+    const onState = vi.fn()
+    const connection = createCfsmSocket({
+      base: 'https://retry.invalid', ids: ['node'], timeoutMinutes: 0,
+      socketFactory: () => { const socket = new FakeSocket(); sockets.push(socket); return socket },
+      onState, onSamples: vi.fn(), onTimeout: vi.fn(),
+    })
+    for (let index = 0; index < 11; index += 1) {
+      sockets.at(-1)?.remoteClose(1006)
+      vi.advanceTimersByTime(60_000)
+    }
+    expect(sockets).toHaveLength(11)
+    expect(onState).toHaveBeenLastCalledWith('unavailable')
+    vi.advanceTimersByTime(300_000)
+    expect(sockets).toHaveLength(11)
+    connection.close()
+    expect(vi.getTimerCount()).toBe(0)
+  })
   it('closes the failed socket before reconnecting after a heartbeat send error', () => {
     vi.useFakeTimers()
     const sockets: FakeSocket[] = []
@@ -84,7 +104,7 @@ describe('CFSM WebSocket transport', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
-  it('builds source-aware URLs and exposes JWT only to a cross-host socket', () => {
+  it('builds source-aware URLs without exposing JWT to any socket URL', () => {
     const storage = memoryStorage({ jwt_token: 'secret-token' })
 
     expect(createCfsmSocketUrl('https://a.example', {
@@ -94,12 +114,12 @@ describe('CFSM WebSocket transport', () => {
     expect(createCfsmSocketUrl('https://b.example', {
       storage,
       locationHost: 'a.example',
-    })).toBe('wss://b.example/api/ws?subscribe=all&token=secret-token')
+    })).toBe('wss://b.example/api/ws?subscribe=all')
     expect(createCfsmSocketUrl('https://b.example', {
       storage,
       locationHost: 'a.example',
       subscribe: 'node-1',
-    })).toBe('wss://b.example/api/ws?subscribe=node-1&token=secret-token')
+    })).toBe('wss://b.example/api/ws?subscribe=node-1')
     expect(() => createCfsmSocketUrl('https://b.example', {
       subscribe: 'invalid id',
     })).toThrow('valid CFSM WebSocket subscription target')

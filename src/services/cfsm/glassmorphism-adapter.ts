@@ -69,6 +69,7 @@ export function toGlassServer(server: CfsmServer, config: SiteConfig | null): Gl
 
   return {
     key: serverKey(server),
+    windowUpdatedAt: server.latencyWindowUpdatedAt,
     id: server.id,
     sourceBase: server.source.base,
     sourceLabel: server.source.label,
@@ -86,6 +87,7 @@ export function toGlassServer(server: CfsmServer, config: SiteConfig | null): Gl
     showPrice: server.systemConfig?.showPrice !== false,
     showExpire: server.systemConfig?.showExpire !== false,
     showTraffic: server.systemConfig?.showTraffic !== false,
+    showThreeNet: server.systemConfig?.showThreeNet === true,
     online: server.online,
     sortOrder: server.sortOrder,
     cpu: boundedPercentage(server.cpu),

@@ -15,6 +15,18 @@ function installLocation(): void {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('application config initialization', () => {
+  it('shares and caches the owning-source config across homepage and detail consumers', async () => {
+    installLocation()
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ site_title: '来源配置' })))
+    vi.stubGlobal('fetch', fetcher)
+    setActivePinia(createPinia())
+    const app = useAppStore()
+    const [first, second] = await Promise.all([app.loadSourceConfig(BASE), app.loadSourceConfig(BASE)])
+    expect(first.siteTitle).toBe('来源配置')
+    expect(second).toEqual(first)
+    await app.loadSourceConfig(BASE)
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
   it('shares one in-flight /api/config request across concurrent route initializers', async () => {
     installLocation()
     let release: ((response: Response) => void) | undefined
@@ -54,7 +66,7 @@ describe('application config initialization', () => {
     expect(app.state).toBe('ready')
   })
 
-  it('retains the last real config when a later refresh fails', async () => {
+  it('reuses the confirmed config without another request during the page lifetime', async () => {
     installLocation()
     vi.stubGlobal('fetch', async () => {
       throw new TypeError('offline')
@@ -66,7 +78,7 @@ describe('application config initialization', () => {
     await app.initialize()
 
     expect(app.config?.siteTitle).toBe('已加载站点')
-    expect(app.state).toBe('error')
-    expect(app.error).toBe('CFSM request could not be completed')
+    expect(app.state).toBe('ready')
+    expect(app.error).toBeNull()
   })
 })

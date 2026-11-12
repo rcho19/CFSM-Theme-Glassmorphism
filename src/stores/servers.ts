@@ -89,7 +89,7 @@ export const useServersStore = defineStore('servers', () => {
       )
       for (const failure of result.failures) {
         const previous = previousByBase.get(failure.source.base)
-        if (previous) refreshedByBase.set(failure.source.base, previous)
+        if (previous && failure.status !== 401 && failure.status !== 403) refreshedByBase.set(failure.source.base, previous)
       }
       collections.value = bases.flatMap((base) => {
         const collection = refreshedByBase.get(base)

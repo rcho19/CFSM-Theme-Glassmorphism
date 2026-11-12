@@ -51,9 +51,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('theme settings schema', () => {
-  it('normalizes all 48 audited fields across defaults, backend and local layers', () => {
-    expect(THEME_SETTING_KEYS).toHaveLength(48)
-    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(48)
+  it('normalizes the original fields and three new network settings across all layers', () => {
+    expect(THEME_SETTING_KEYS).toHaveLength(51)
+    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(51)
     const backend = {
       themeMode: 'dark',
       offlineNodesLast: false,
@@ -214,7 +214,7 @@ describe('theme settings store', () => {
     expect(parseThemeStorageSnapshot(storage.getItem(THEME_SETTINGS_STORAGE_KEY))?.overrides).toEqual({})
   })
 
-  it('posts a complete snapshot, clears local state and rehydrates from /api/config', async () => {
+  it('posts a complete snapshot and uses its confirmed response without another config read', async () => {
     const storage = new MemoryStorage()
     storage.setItem(STORAGE_KEYS.jwt, 'valid-jwt')
     storage.setItem(THEME_SETTINGS_STORAGE_KEY, JSON.stringify(themeStorageSnapshot({
@@ -249,10 +249,9 @@ describe('theme settings store', () => {
     const outcome = await store.saveBackend('https://status.example', { storage, fetcher })
 
     expect(outcome.saved).toBe(true)
-    expect(outcome.config?.themeOptions.futureOption).toBe('rehydrated')
+    expect(store.backendRaw.futureOption).toBe('returned')
     expect(requests).toEqual([
       'https://status.example/api/theme_options',
-      'https://status.example/api/config',
     ])
     expect(authorization).toBe('Bearer valid-jwt')
     expect(posted).toHaveProperty('theme_options')
@@ -265,8 +264,8 @@ describe('theme settings store', () => {
     expect(THEME_SETTING_KEYS.every((key) => key in themeOptions)).toBe(true)
     expect(themeOptions.futureOption).toBe('original')
     expect(themeOptions.jwt_token).toBeUndefined()
-    expect(store.runtime.themeMode).toBe('light')
-    expect(store.draft.themeMode).toBe('light')
+    expect(store.runtime.themeMode).toBe('dark')
+    expect(store.draft.themeMode).toBe('dark')
     expect(store.hasLocalOverrides).toBe(false)
   })
 
@@ -292,7 +291,7 @@ describe('theme settings store', () => {
     expect(store.draft.alertTitle).toBe('Retained draft')
   })
 
-  it('coalesces rapid save clicks into one backend write and one config readback', async () => {
+  it('coalesces rapid save clicks into one backend write without config readback', async () => {
     const storage = new MemoryStorage()
     storage.setItem(STORAGE_KEYS.jwt, 'credential')
     let releaseWrite: (() => void) | undefined
@@ -329,7 +328,7 @@ describe('theme settings store', () => {
 
     expect(outcomes.every((outcome) => outcome.saved)).toBe(true)
     expect(writes).toBe(1)
-    expect(reads).toBe(1)
+    expect(reads).toBe(0)
     expect(store.runtime.themeMode).toBe('dark')
   })
 

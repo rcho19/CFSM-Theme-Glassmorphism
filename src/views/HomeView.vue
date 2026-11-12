@@ -106,9 +106,21 @@ const generalStageClass = computed(() => {
 const metadataFields = computed(() => parseSettingKeys(theme.runtime.nodeListMetadataFields))
 const quickControlKeys = computed(() => resolveQuickControlKeys(theme.runtime))
 const glassServers = computed(() => (
-  glassServerMapper.map(serverStore.servers, app.config)
+  serverStore.collections.flatMap((collection) => glassServerMapper.map(
+    collection.servers, app.sourceConfigs[collection.source.base] ?? null,
+  ))
 ))
-const summary = computed(() => summarizeServers(glassServers.value))
+const summary = computed(() => {
+  const metrics = summarizeServers(glassServers.value)
+  const valid = serverStore.collections.every(({ stats }) => ['total', 'online', 'offline'].every((key) => typeof stats[key] === 'number' && Number.isFinite(stats[key])))
+  if (!valid || !serverStore.collections.length) return metrics
+  return {
+    ...metrics,
+    total: serverStore.collections.reduce((sum, { stats }) => sum + Number(stats.total), 0),
+    online: serverStore.collections.reduce((sum, { stats }) => sum + Number(stats.online), 0),
+    offline: serverStore.collections.reduce((sum, { stats }) => sum + Number(stats.offline), 0),
+  }
+})
 /*
  * 总览里的剩余价值 / 月费用 / 年费用。只有选用了这些卡、价格对访客可见、而且确有跨币种换算时
  * 才请求汇率；站点关闭 show_price 的节点不参与合计，明细弹窗也只拿到这些节点。
@@ -224,6 +236,7 @@ watch(groups, (nextGroups) => {
 // 首页由 KeepAlive 保留，离开后侦听仍在运行（与 Komari 的 isViewActive 一样区分前台）：
 // 只有首页在前台时才改网页标题，否则停留详情页期间配置重读、站点名变化会把详情页的标题改掉。
 let viewActive = true
+let homeReady = false
 
 watch(siteTitle, (title) => {
   if (title && viewActive) document.title = title
@@ -232,11 +245,13 @@ watch(siteTitle, (title) => {
 // KeepAlive 回到首页时组件不重建，上面的 watch 不会再执行，这里恢复被详情页改写的标题。
 onActivated(() => {
   viewActive = true
+  if (homeReady) realtime.start(refreshRest)
   if (siteTitle.value) document.title = siteTitle.value
 })
 
 onDeactivated(() => {
   viewActive = false
+  realtime.stop()
 })
 
 async function refreshRest(): Promise<void> {
@@ -317,7 +332,8 @@ onMounted(async () => {
   } else {
     await refreshRest()
   }
-  realtime.start(refreshRest)
+  homeReady = true
+  if (viewActive) realtime.start(refreshRest)
 })
 
 onUnmounted(() => realtime.stop())
@@ -575,6 +591,7 @@ onUnmounted(() => realtime.stop())
               <ServerCard
                 v-for="(server, index) in visibleServers"
                 :key="cardTransitionKey(server)"
+                :three-net-enabled="theme.runtime.threeNetEnabled"
                 :server="server"
                 :show-source="showSource"
                 :density="theme.runtime.nodeCardSize"
@@ -589,6 +606,8 @@ onUnmounted(() => realtime.stop())
             <ServerList
               v-else
               :key="selectedGroup"
+              :three-net-enabled="theme.runtime.threeNetEnabled"
+              :three-net-bindings="theme.runtime.threeNetBindings"
               :servers="visibleServers"
               :show-source="showSource"
               :favorite-keys="preferences.favorites"
@@ -609,8 +628,8 @@ onUnmounted(() => realtime.stop())
       <footer v-if="!coldStartCover" class="app-footer">
         <span>
           Powered by
-          <a href="https://github.com/huilang-me/CF-Server-Monitor/">
-            CF-Server-Monitor<template v-if="app.config?.version"> v{{ app.config.version }}</template>
+          <a href="https://github.com/huilang-me/CF-Server-Monitor/" :title="app.config?.version ?? undefined">
+            CF-Server-Monitor
           </a>
         </span>
         <span>Glassmorphism Theme · {{ realtimeLabel }}</span>

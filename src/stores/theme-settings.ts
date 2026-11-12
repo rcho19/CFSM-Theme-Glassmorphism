@@ -4,7 +4,6 @@ import type { SiteConfig } from '@/types/cfsm'
 import type { DashboardViewMode } from '@/types/glassmorphism'
 import {
   CfsmRequestError,
-  fetchSiteConfig,
   saveThemeOptions,
   STORAGE_KEYS,
 } from '@/services/cfsm'
@@ -52,6 +51,7 @@ export interface ThemeSaveFailure {
 }
 
 export interface ThemeSaveOptions {
+  currentConfig?: SiteConfig
   fetcher?: typeof fetch
   storage?: Storage
   timeoutMs?: number
@@ -313,6 +313,11 @@ export const useThemeSettingsStore = defineStore('theme-settings', () => {
     forceReseed = false,
   ): void {
     backendRaw.value = recordValue(options)
+    // Pages 部署提供的默认背景仅在运营方未设置主题背景时生效。
+    const background = typeof document === 'undefined' || typeof document.querySelector !== 'function' ? null : document.querySelector<HTMLMetaElement>('meta[name="cfsm-background-image"]')?.content
+    if (background && !('backgroundEnabled' in backendRaw.value)) {
+      backendRaw.value = { ...backendRaw.value, backgroundEnabled: true, lightBackgroundUrl: background, darkBackgroundUrl: background }
+    }
     preferredTheme.value = sitePreferredTheme
     hasBackendCredential.value = hasStoredJwt(activeStorage)
     rebuildFromLayers(forceReseed)
@@ -505,26 +510,9 @@ export const useThemeSettingsStore = defineStore('theme-settings', () => {
       ? '设置已保存到 CFSM 后端。'
       : '设置已保存到 CFSM 后端，但浏览器不允许清除本地覆盖，刷新后旧设置可能恢复。'
 
-    try {
-      const config = await fetchSiteConfig(base, {
-        fetcher: options.fetcher,
-        storage: requestStorage,
-        timeoutMs: options.timeoutMs,
-      })
-      hydrateBackend(config.themeOptions, config.preferredTheme, !draftChangedDuringSave())
-      if (draftChangedDuringSave()) previewDraft()
-      message.value = localLayerStored
-        ? '已保存到后端，所有设备与访客都会以这套设置为默认。'
-        : '已保存到后端，但浏览器不允许清除本地覆盖，刷新后此浏览器的旧设置可能恢复。'
-      return { saved: true, config, refetchWarning: null }
-    } catch (error) {
-      const warning = error instanceof Error ? error.message : 'Unknown config re-fetch error'
-      refetchWarning.value = warning
-      message.value = localLayerStored
-        ? '设置已保存到后端，但重新读取站点配置失败，刷新页面后可以确认最新设置。'
-        : '设置已保存到后端，但重新读取配置和清除本地覆盖都没有成功，刷新页面后可以确认最新设置。'
-      return { saved: true, config: null, refetchWarning: warning }
-    }
+    // 使用 POST 已确认的配置，避免为保存主题额外查询 /api/config。
+    const config = options.currentConfig ? { ...options.currentConfig, themeOptions: backendRaw.value } : null
+    return { saved: true, config, refetchWarning: null }
   }
 
   function saveBackend(base: string, options: ThemeSaveOptions = {}): Promise<ThemeSaveOutcome> {

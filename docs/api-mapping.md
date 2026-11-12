@@ -1,5 +1,7 @@
 # CFSM API 映射
 
+> 1.3.0-dev.1 更新：网络与安全约束以 `IMPLEMENTATION_SPEC.md`、`SECURITY.md` 为准。禁用第三方自动汇率请求及所有定时 REST 回退；配置按来源缓存；详情默认 0.167 小时且共用历史。后台入口统一 `/admin#/admin`。历史段落保留作为上游移植记录。
+
 ## 唯一运行时协议
 
 本主题只调用 CF-Server-Monitor 官方第三方主题接口；唯一的例外是 v1.1.7 起的公开日汇率（见下方「第三方汇率数据源」），它不经过 CFSM。Komari 的 `/api/public`、`/api/nodes`、`/api/clients`、`/rpc2` 以及 `common:*`、`public:*`、`admin:*` RPC 命名空间不得进入生产包。

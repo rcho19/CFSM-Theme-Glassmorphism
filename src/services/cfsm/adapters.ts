@@ -204,6 +204,7 @@ function systemConfig(value: unknown): ServerSystemConfig | undefined {
   if ('show_price' in value) result.showPrice = booleanValue(value.show_price)
   if ('show_expire' in value) result.showExpire = booleanValue(value.show_expire)
   if ('show_tf' in value) result.showTraffic = booleanValue(value.show_tf)
+  if ('show_three_net_details' in value) result.showThreeNet = booleanValue(value.show_three_net_details)
   const historyPoints = numberValue(value.long_history_points)
   if (historyPoints !== null) result.longHistoryPoints = historyPoints
   return Object.keys(result).length > 0 ? result : undefined
@@ -310,6 +311,7 @@ export function normalizeServer(
     udpConnections: numberValue(input.udp_conn),
     latency: probeValues(input, 'ping'),
     packetLoss: probeValues(input, 'loss'),
+    latencyWindowUpdatedAt: Array.isArray(input.ping) ? now : undefined,
     latencyWindow: latencyWindow(input.ping),
     packetLossWindow: latencyWindow(input.loss),
     memoryTotal: numberValue(input.ram_total),

@@ -17,6 +17,7 @@ import {
 import { apiSource, getApiBases, STORAGE_KEYS, writeStorage } from './config'
 import { CfsmRequestError, cfsmGet, cfsmPost, type CfsmRequestOptions } from './http'
 import { normalizeServerId } from './identifiers'
+import { configureTurnstilePolicy } from './credential-policy'
 
 export const HISTORY_HOURS = [0.167, 0.5, 1, 6, 12, 24, 48, 96, 168] as const
 export type HistoryHours = (typeof HISTORY_HOURS)[number]
@@ -47,7 +48,9 @@ export async function fetchSiteConfig(
   if (!base) throw new Error('No CFSM API base is configured')
   try {
     const payload = await cfsmGet('/api/config', { ...options, base })
-    return normalizeSiteConfig(payload)
+    const config = normalizeSiteConfig(payload)
+    configureTurnstilePolicy(base, config.turnstileEnabled)
+    return config
   } catch (error) {
     /*
      * 与 CFSM 默认前端的 `fetchAllTurnstileConfigs` 一致：本地已存的 Turnstile 凭据过期时，
@@ -56,7 +59,9 @@ export async function fetchSiteConfig(
      */
     if (error instanceof CfsmRequestError && error.status === 403 && options.includeTurnstile !== false) {
       const payload = await cfsmGet('/api/config', { ...options, base, includeTurnstile: false })
-      return normalizeSiteConfig(payload)
+      const config = normalizeSiteConfig(payload)
+      configureTurnstilePolicy(base, config.turnstileEnabled)
+      return config
     }
     throw error
   }

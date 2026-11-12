@@ -19,6 +19,7 @@ import {
  * 否则页面又会像第 2 轮那样漏项、并组。
  */
 const UPSTREAM_GROUPS: ReadonlyArray<{ title: string, keys: readonly string[] }> = [
+  { title: '三网 · 历史窗口', keys: ['threeNetEnabled', 'threeNetSparkline'] },
   {
     title: '01 · 基础与外观',
     keys: ['themeMode', 'dataUpdateInterval', 'defaultViewMode', 'nodeCardSize'],
@@ -73,7 +74,8 @@ const UPSTREAM_GROUPS: ReadonlyArray<{ title: string, keys: readonly string[] }>
  * 它们仍留在 48 项 schema 与保存快照中——保存协议要求发送完整对象。
  * 正式版待办见 `docs/todo.md` TODO-02。
  */
-const BACKLOG_KEYS: readonly string[] = ['rpcTransportMode', 'visitorInfoEnabled']
+// threeNetBindings 由专用线路选择器负责，不再暴露原始 JSON 输入框。
+const BACKLOG_KEYS: readonly string[] = ['rpcTransportMode', 'visitorInfoEnabled', 'threeNetBindings']
 
 describe('设置页字段注册表与上游清单一致', () => {
   it('分组标题与顺序逐条对应 komari-theme.json', () => {
@@ -153,10 +155,10 @@ describe('设置页字段注册表与上游清单一致', () => {
    * 真实站点走 WSS，实测推送节奏跟随站点自己的上报配置（实测每节点约 2 秒一次），
    * 与那个 5 秒无关。下限 5 秒的真实理由是回退轮询每跳要重取配置与节点列表。
    */
-  it('数据更新间隔说明写明生效条件与下限，且不再声称服务端的推送批次', () => {
+  it('旧轮询设置明确标为禁用，不允许绕过官方请求预算', () => {
     const field = THEME_FORM_FIELDS.find((item) => item.key === 'dataUpdateInterval')
-    expect(field?.help).toContain('实时连接不可用')
-    expect(field?.note).toContain('5 秒')
+    expect(field?.help).toContain('自动 REST 轮询已禁用')
+    expect(field?.enabled?.(cloneThemeSettings(DEFAULT_THEME_SETTINGS))).toBe(false)
     expect(field?.note).not.toContain('一批')
     expect(field?.note).not.toMatch(/约 ?5 ?秒/)
   })

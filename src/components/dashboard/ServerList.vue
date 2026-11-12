@@ -6,6 +6,7 @@ import AppProgressThin from '@/components/ui/AppProgressThin.vue'
 import type { IconName } from '@/constants/icons'
 import { resolveRegionCoordinates } from '@/domain/advanced-tools'
 import { windowAverage } from '@/domain/probe-window'
+import { threeNetRows } from '@/domain/three-net'
 import { resolveNodeProvider } from '@/domain/provider'
 import {
   trafficDisplay,
@@ -33,6 +34,8 @@ import {
  * 行主点击直接进入详情，收藏按钮 stopPropagation。
  */
 const props = defineProps<{
+  threeNetEnabled?: boolean
+  threeNetBindings?: string
   servers: GlassServer[]
   showSource: boolean
   favoriteKeys: ReadonlySet<string>
@@ -146,6 +149,10 @@ function metadataBadges(server: GlassServer): MetadataBadge[] {
  * 站点关闭三网详情时窗口为空，回落到本次上报的最新值。
  */
 function probeText(server: GlassServer): string {
+  if (props.threeNetEnabled) {
+    if (server.showThreeNet === false) return MISSING_TEXT
+    return threeNetRows(server, props.threeNetBindings ?? '{}').map((row) => `${row.label} ${row.latency} / ${row.loss}`).join(' · ')
+  }
   const probe = server.latency[0]
   if (!probe) return MISSING_TEXT
   const average = windowAverage(server.history.latencySeries, probe.target)

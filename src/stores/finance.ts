@@ -113,7 +113,10 @@ export const useFinanceStore = defineStore('finance', () => {
     hydrate(now())
     if (status.value === 'ready') return Promise.resolve()
     if (inflight) return inflight
-    const request: RateFetch = fetcher ?? ((url, init) => globalThis.fetch(url, init))
+    // 官方主题端点白名单：生产环境不自动访问第三方汇率服务。
+    // 测试可注入离线 fetcher；实际显示使用已有缓存、内置参考值和手动汇率。
+    if (!fetcher) { status.value = 'ready'; return Promise.resolve() }
+    const request: RateFetch = fetcher
     status.value = 'loading'
     inflight = (async () => {
       const fetched = await fetchRateSnapshot(request, now)

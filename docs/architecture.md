@@ -1,5 +1,7 @@
 # 架构
 
+> 1.3.0-dev.1：新增 credential-policy 来源隔离、three-net 领域选择器、ThreeNetPing/ThreeNetSettings 和上游 Sparkline。首页历史为接口快照，不做周期 REST 刷新。按 origin 缓存配置，后台开关贯穿 adapter → store → UI。参考 `IMPLEMENTATION_SPEC.md`。
+
 ## 目标
 
 CFSM-Glassmorphism 是 CF-Server-Monitor 的静态第三方主题。运行包只包含 `index.html` 与 `assets/`；它保留 Komari Glassmorphism 的视觉与交互语言，但所有数据、鉴权、实时协议和配置持久化都服从 CFSM 官方主题协议。

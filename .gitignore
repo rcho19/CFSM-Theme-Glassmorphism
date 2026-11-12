@@ -10,4 +10,7 @@ coverage/
 # Codex projectless workspace helpers and read-only upstream checkouts.
 work/
 outputs/
+outputs-*.log
+docs/audit-evidence-*/
+docs/2026-11-11-主题审查与三网UI实施计划.md
 

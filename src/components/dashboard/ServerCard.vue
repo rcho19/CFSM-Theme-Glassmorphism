@@ -4,6 +4,7 @@ import type { GlassServer } from '@/types/glassmorphism'
 import type { NodeCardSize } from '@/theme/settings'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import AppProgressThin from '@/components/ui/AppProgressThin.vue'
+import ThreeNetPing from '@/components/dashboard/ThreeNetPing.vue'
 import { resolveRegionCoordinates } from '@/domain/advanced-tools'
 import { probeSeriesFor, windowAverage, type ProbeSeriesMap } from '@/domain/probe-window'
 import {
@@ -42,6 +43,7 @@ import { trafficStatus, trafficTextTone, usageStatus } from '@/utils/progress-st
  * 数据全部来自既有 normalized model，不解析 wire payload，也不补造缺失值。
  */
 const props = defineProps<{
+  threeNetEnabled?: boolean
   server: GlassServer
   showSource: boolean
   /** 卡片密度直接来自主题设置 `nodeCardSize`，与 Komari 的 NodeCard 一致。 */
@@ -524,13 +526,15 @@ function hideMissingImage(event: Event): void {
         </div>
       </div>
 
-      <div v-if="primaryProbe" class="node-probes">
+      <ThreeNetPing v-if="threeNetEnabled && server.showThreeNet === true" :server="server" @open="emit('open')" />
+      <div v-else-if="primaryProbe && !threeNetEnabled" class="node-probes">
         <div class="node-probe">
           <div class="node-probe__head" :title="latencyTitle">
             <span>延迟</span>
             <span class="node-probe__value">{{ latencyText }}</span>
           </div>
           <div
+            v-if="server.showThreeNet !== false"
             class="node-probe__bars"
             :style="{ gridTemplateColumns: `repeat(${latencyBars.length}, minmax(0, 1fr))` }"
           >
@@ -543,6 +547,7 @@ function hideMissingImage(event: Event): void {
             <span class="node-probe__value">{{ lossText }}</span>
           </div>
           <div
+            v-if="server.showThreeNet !== false"
             class="node-probe__bars"
             :style="{ gridTemplateColumns: `repeat(${lossBars.length}, minmax(0, 1fr))` }"
           >

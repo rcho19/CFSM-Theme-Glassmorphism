@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -31,11 +30,12 @@ if (sourceTip() !== sourceSha) {
       throw new Error('Preview archive must contain only index.html and assets/')
     }
 
-    const previewRef = 'refs/heads/preview-main'
+    const previewRef = 'refs/heads/dist'
     // 不用 --exit-code：分支不存在可初始化，网络失败必须中止。
     // 记录本次看到的远端 SHA，推送时用租约拒绝覆盖并发修改。
     const observed = git(['ls-remote', 'origin', previewRef])
     const previousSha = observed ? observed.split(/\s/)[0] : ''
+    if (previousSha) git(['fetch', '--no-tags', 'origin', previewRef])
     const env = {
       ...process.env,
       GIT_INDEX_FILE: join(staging, 'index'),
@@ -47,17 +47,17 @@ if (sourceTip() !== sourceSha) {
     const gitDir = git(['rev-parse', '--absolute-git-dir'])
     git([`--git-dir=${gitDir}`, `--work-tree=${themeDir}`, 'add', '-f', '--', 'index.html', 'assets'], { env })
     const tree = git(['write-tree'], { env })
-    // 不设父提交：分支每次只保留最新一份产物。随机标识保证相同源码
-    // 在同一秒重复发布时也会得到不同提交，便于审计租约更新。
-    const commit = git(['commit-tree', tree], {
-      env, input: `main 预览 · ${sourceSha.slice(0, 7)}\n\nSource: ${sourceSha}\nPreview-Nonce: ${randomUUID()}\n`,
+    // 首次创建独立产物历史，之后始终以上次构建为父提交，正常 push。
+    const subject = git(['show', '-s', '--format=%s', sourceSha])
+    const commit = git(['commit-tree', tree, ...(previousSha ? ['-p', previousSha] : [])], {
+      env, input: `${subject}\n\nSource: ${sourceSha}\n`,
     })
     if (sourceTip() !== sourceSha) {
       console.log('Source main advanced during packaging; skipping the superseded preview.')
     } else {
       // 分支不存在时空 SHA 表示期望不存在；旧 SHA 不一致则安全失败。
-      git(['push', `--force-with-lease=${previewRef}:${previousSha}`, 'origin', `${commit}:${previewRef}`])
-      console.log(`Published preview-main from ${sourceSha}`)
+      git(['push', 'origin', `${commit}:${previewRef}`])
+      console.log(`Published dist from ${sourceSha}`)
     }
   } finally {
     // 唯一删除目标是本次 mkdtemp 创建的目录。

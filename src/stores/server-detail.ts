@@ -15,7 +15,6 @@ import {
   fetchHistory,
   fetchServer,
   fetchServerFromSources,
-  fetchSiteConfig,
   mergeRealtimeSample,
   type DetailRealtimeController,
   type HistoryHours,
@@ -74,7 +73,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
    * 通常宽于节点自己的上报间隔，所以看起来接近全量，但那是数据密度的结果而非接口保证。
    * 两张图共用这一个窗口，冷启动只发一次历史请求。
    */
-  const historyHours = ref<HistoryHours>(1)
+  const historyHours = ref<HistoryHours>(0.167)
   /*
    * 「实时」档位：先复用已加载历史的最近 10 分钟，必要时再取一次 10 分钟历史，
    * 随后逐条接续 WebSocket 样本。缓冲随节点切换清空并重新垫底；窗口与条数上限在
@@ -92,7 +91,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
    */
   const pingFollowsHistory = ref(true)
   const ownPingHistory = shallowRef<HistorySeries | null>(null)
-  const ownPingHistoryHours = ref<HistoryHours>(1)
+  const ownPingHistoryHours = ref<HistoryHours>(0.167)
   const state = ref<DetailLoadState>('idle')
   const historyState = ref<HistoryLoadState>('idle')
   const ownPingHistoryState = ref<HistoryLoadState>('idle')
@@ -115,7 +114,6 @@ export const useServerDetailStore = defineStore('server-detail', () => {
    * 数据清空并翻成错误态。序号只认「最后一次发起的请求」，成功与失败两条路径同样适用。
    */
   let historySeq = 0
-  let pingHistorySeq = 0
 
   const sourceBase = computed(() => server.value?.source.base ?? null)
   const historyPoints = computed(() => history.value?.points ?? [])
@@ -230,8 +228,10 @@ export const useServerDetailStore = defineStore('server-detail', () => {
       if (controller.signal.aborted || expectedRevision !== revision) return
       const nextIssue = classifyCfsmRequestError(error)
       refreshIssue.value = nextIssue
-      if (nextIssue.kind === 'not-found') {
+      if (nextIssue.kind === 'not-found' || nextIssue.kind === 'unauthorized' || nextIssue.kind === 'forbidden') {
         server.value = null
+        history.value = null
+        livePoints.value = []
         issue.value = nextIssue
         state.value = 'error'
         stopRealtime()
@@ -248,7 +248,6 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     historyHours.value = hours
     // 用户把负载图调回延迟图正在用的窗口时，重新跟随，避免两份相同的历史。
     if (!pingFollowsHistory.value && ownPingHistoryHours.value === hours) {
-      pingHistorySeq += 1
       pingFollowsHistory.value = true
       ownPingHistory.value = null
       ownPingHistoryState.value = 'idle'
@@ -280,46 +279,8 @@ export const useServerDetailStore = defineStore('server-detail', () => {
   }
 
   async function loadPingHistory(hours: HistoryHours = pingHistoryHours.value): Promise<void> {
-    // 与负载图同窗口：复用那一份历史，不再单独请求。
-    if (hours === historyHours.value) {
-      pingHistorySeq += 1
-      pingFollowsHistory.value = true
-      ownPingHistory.value = null
-      ownPingHistoryState.value = 'idle'
-      ownPingHistoryIssue.value = null
-      return
-    }
-
-    const current = server.value
-    const controller = requestController
-    if (!current || !controller) return
-    const rangeChanged = pingFollowsHistory.value || hours !== ownPingHistoryHours.value
-    pingFollowsHistory.value = false
-    ownPingHistoryHours.value = hours
-    ownPingHistoryState.value = 'loading'
-    ownPingHistoryIssue.value = null
-    if (rangeChanged) ownPingHistory.value = null
-    const expectedRevision = revision
-    const seq = ++pingHistorySeq
-    // 回到共享窗口也要作废在途的独立请求，否则它晚到时会把图切回独立那份数据。
-    const stale = (): boolean => (
-      controller.signal.aborted
-      || expectedRevision !== revision
-      || seq !== pingHistorySeq
-      || pingFollowsHistory.value
-    )
-    try {
-      const result = await fetchHistory(current.id, hours, current.source.base, {
-        signal: controller.signal,
-      })
-      if (stale()) return
-      ownPingHistory.value = result
-      ownPingHistoryState.value = result.points.length > 0 ? 'ready' : 'empty'
-    } catch (error) {
-      if (stale()) return
-      ownPingHistoryState.value = 'error'
-      ownPingHistoryIssue.value = classifyCfsmRequestError(error)
-    }
+    pingFollowsHistory.value = true
+    if (hours !== historyHours.value || historyState.value === 'error') await loadHistory(hours)
   }
 
   /*
@@ -335,6 +296,12 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     const controller = requestController
     if (!current || !controller) return
     sourceConfigState.value = 'loading'
+    const cachedConfig = app.sourceConfigs[current.source.base]
+    if (cachedConfig) {
+      sourceConfig.value = cachedConfig
+      sourceConfigState.value = 'ready'
+      return
+    }
 
     if (app.primaryBase === current.source.base) {
       // 从首页快速进入详情时，主配置可能仍在途中；复用 app store 的同一请求，
@@ -356,9 +323,10 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     }
 
     try {
-      const config = await fetchSiteConfig(current.source.base, { signal: controller.signal })
+      const config = await app.loadSourceConfig(current.source.base)
       if (!controller.signal.aborted && expectedRevision === revision) {
         sourceConfig.value = config
+        app.sourceConfigs[current.source.base] = config
         sourceConfigState.value = 'ready'
       }
     } catch {

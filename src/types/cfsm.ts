@@ -47,6 +47,7 @@ export interface ServerSystemConfig {
   showPrice?: boolean
   showExpire?: boolean
   showTraffic?: boolean
+  showThreeNet?: boolean
   longHistoryPoints?: number
 }
 
@@ -74,6 +75,7 @@ export interface ProviderTags {
 }
 
 export interface CfsmServer {
+  latencyWindowUpdatedAt?: number
   id: string
   source: ApiSource
   name: string

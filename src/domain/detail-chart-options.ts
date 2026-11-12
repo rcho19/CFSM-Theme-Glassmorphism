@@ -1,5 +1,6 @@
 import { LIVE_SEED_HOURS, type ChartRow } from '@/domain/server-detail'
 import { countMasked, detectSpikes } from '@/domain/spike-mask'
+import { resolveValueAxisScale } from '@/utils/pingChartAxisScale'
 import type { ChartFamily } from '@/domain/theme-presentation'
 import type { HistoryHours } from '@/services/cfsm'
 import type { HistoryPoint, ProbeTarget, ProbeValue } from '@/types/cfsm'
@@ -979,6 +980,7 @@ export function pingChartOption(context: PingChartContext) {
       itemStyle: { color: task.color },
     }
   })
+  const axisScale = resolveValueAxisScale(series.flatMap((item) => item.data))
 
   return {
     animation: false,
@@ -1048,6 +1050,7 @@ export function pingChartOption(context: PingChartContext) {
     yAxis: {
       type: 'value' as const,
       name: '延迟 (ms)',
+      ...axisScale,
       nameTextStyle: { color: theme.textSecondary },
       axisLabel: { fontSize: 11, color: theme.textSecondary, formatter: '{value}' },
       axisLine: { show: false },

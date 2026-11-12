@@ -1,5 +1,9 @@
 # CFSM Glassmorphism Agent Guide
 
+## Current local development scope
+
+Read `docs/IMPLEMENTATION_SPEC.md` and `docs/DEVELOPMENT_CONSTRAINTS.md` first. The current user's local-development and later self-publication instructions override historical commit/push requirements below. Never push to the upstream repository. Do not publish, deploy, or create releases in this round.
+
 ## Scope and sources
 
 - Read this file and `docs/CODEX_SPEC.md` before changing the project. The latter is the complete product specification and wins on scope or detail.

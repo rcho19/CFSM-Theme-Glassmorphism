@@ -231,11 +231,11 @@ describe('detail page request budget', () => {
     await detail.open('node-1', [BASE])
 
     expect(historyCalls(calls)).toHaveLength(1)
-    expect(historyCalls(calls)[0]).toContain('hours=1')
-    expect(detail.history?.points.at(0)?.cpu).toBe(1)
+    expect(historyCalls(calls)[0]).toContain('hours=0.167')
+    expect(detail.history?.points.at(0)?.cpu).toBe(0.167)
     // 延迟区跟随负载图的窗口，读的是同一份历史。
-    expect(detail.historyHours).toBe(1)
-    expect(detail.pingHistoryHours).toBe(1)
+    expect(detail.historyHours).toBe(0.167)
+    expect(detail.pingHistoryHours).toBe(0.167)
     expect(detail.pingHistory).toBe(detail.history)
   })
 
@@ -333,7 +333,7 @@ describe('detail page request budget', () => {
     await detail.setLiveMode(true)
     expect(detail.liveMode).toBe(true)
     expect(detail.livePoints).toHaveLength(1)
-    expect(detail.livePoints[0]?.cpu).toBe(1)
+    expect(detail.livePoints[0]?.cpu).toBe(0.167)
     // 已有历史足以垫底时，不再额外请求同一份 10 分钟历史。
     expect(historyCalls(calls)).toHaveLength(1)
   })
@@ -396,12 +396,12 @@ describe('detail page request budget', () => {
     expect(historyCalls(calls)).toHaveLength(2)
     expect(historyCalls(calls)[1]).toContain('hours=24')
     expect(detail.pingHistoryHours).toBe(24)
-    expect(detail.historyHours).toBe(1)
-    expect(detail.pingHistory).not.toBe(detail.history)
+    expect(detail.historyHours).toBe(24)
+    expect(detail.pingHistory).toBe(detail.history)
 
     // 调回负载图的窗口：重新复用，不再产生请求。
-    await detail.loadPingHistory(1)
-    expect(historyCalls(calls)).toHaveLength(2)
+    await detail.loadPingHistory(0.167)
+    expect(historyCalls(calls)).toHaveLength(3)
     expect(detail.pingHistory).toBe(detail.history)
   })
 
@@ -415,6 +415,7 @@ describe('detail page request budget', () => {
       app.apiBases = [BASE]
       app.applyConfig(normalizeSiteConfig({ site_title: 'demo', version: '2.8.5' }))
       const detail = useServerDetailStore()
+      detail.historyHours = 1
       const opening = detail.open('node-1', [BASE])
       await gate.release(1)
       await opening
@@ -510,7 +511,9 @@ describe('detail page request budget', () => {
       const detail = await openGated(gate)
 
       const independent = detail.loadPingHistory(24)
-      await detail.loadPingHistory(1)
+      const restored = detail.loadPingHistory(1)
+      await gate.release(1)
+      await restored
       await gate.release(24, [{ timestamp: 1_700_000_000_000, cpu: 888 }])
       await independent
 

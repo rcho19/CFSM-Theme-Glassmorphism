@@ -139,7 +139,7 @@ describe('detail realtime coordination', () => {
     controller.dispose()
   })
 
-  it('uses one low-frequency REST fallback and requires an explicit timeout decision', async () => {
+  it('never polls REST during backoff and requires an explicit timeout decision', async () => {
     vi.useFakeTimers()
     const factory = connectionFactory()
     const refreshRest = vi.fn(async () => undefined)
@@ -157,13 +157,13 @@ describe('detail realtime coordination', () => {
     controller.start()
     factory.options[0]?.onState('unavailable')
     factory.options[0]?.onState('backoff')
-    expect(onFallbackChange.mock.calls).toEqual([[true]])
+    expect(onFallbackChange).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(30_000)
-    expect(refreshRest).toHaveBeenCalledOnce()
+    expect(refreshRest).not.toHaveBeenCalled()
 
     factory.options[0]?.onTimeout()
     expect(onTimeoutChange).toHaveBeenLastCalledWith(true)
-    expect(onFallbackChange).toHaveBeenLastCalledWith(false)
+    expect(onFallbackChange).not.toHaveBeenCalled()
     controller.continueAfterTimeout()
     expect(factory.connections).toHaveLength(2)
     expect(onTimeoutChange).toHaveBeenLastCalledWith(false)

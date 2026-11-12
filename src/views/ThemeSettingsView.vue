@@ -3,13 +3,13 @@ import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppHeader from '@/components/dashboard/AppHeader.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import ThreeNetSettings from '@/components/dashboard/ThreeNetSettings.vue'
 import {
   isFieldEnabled,
   THEME_SETTINGS_FORM,
   type ThemeField,
 } from '@/domain/theme-settings-form'
 import { useAppStore } from '@/stores/app'
-import { useRealtimeStore } from '@/stores/realtime'
 import { useThemeSettingsStore } from '@/stores/theme-settings'
 import { THEME_SETTING_KEYS, type ThemeSettings } from '@/theme/settings'
 import { message } from '@/utils/message'
@@ -33,7 +33,6 @@ const bootstrap = inject(bootstrapKey, null)
 const coldStartCover = bootstrap?.coverVisible ?? ref(false)
 const copying = ref(false)
 
-const realtime = useRealtimeStore()
 const groups = THEME_SETTINGS_FORM
 const primaryBase = computed(() => app.primaryBase)
 const siteTitleResolution = computed(() => resolveSiteTitle(
@@ -96,19 +95,10 @@ function issueFor(key: keyof ThemeSettings): string | null {
   return theme.draftIssues.find((issue) => issue.key === key)?.message ?? null
 }
 
-/*
- * 「数据更新间隔」只在 WebSocket 不可用时才被读到，正常连接时它一次也不生效。
- * 光靠说明文字看不出此刻算哪种，这里补一行当下的判断。
- *
- * 设置页自己不建实时连接，读的是首页留下的那次观察；没有观察过就不显示，
- * 不拿「未知」冒充「正常」。
- */
+/** 旧字段保留以便回滚，本版不启动 REST 轮询。 */
 function fieldState(key: keyof ThemeSettings): string | null {
   if (key !== 'dataUpdateInterval') return null
-  const observed = realtime.lastObservedStatus
-  if (observed === 'live') return '最近检测到实时连接正常，此项暂未生效。'
-  if (observed === 'fallback') return '最近检测到实时连接不可用，正在按此间隔刷新。'
-  return null
+  return '仅保留旧配置，自动 REST 轮询已禁用。'
 }
 
 function fieldEnabled(field: ThemeField): boolean {
@@ -167,7 +157,7 @@ function onNumber(key: keyof ThemeSettings, event: Event): void {
 async function saveBackend(): Promise<void> {
   const base = primaryBase.value
   if (!base || !authorized.value) return
-  const outcome = await theme.saveBackend(base)
+  const outcome = await theme.saveBackend(base, { currentConfig: app.config ?? undefined })
   if (outcome.config) app.applyConfig(outcome.config)
 }
 
@@ -276,6 +266,7 @@ watch(siteTitle, (title) => {
 
         <form v-else class="settings-layout" @submit.prevent>
           <div class="settings-sections">
+            <ThreeNetSettings />
             <section v-for="group in groups" :key="group.title" class="settings-section glass-panel">
               <header>
                 <div>

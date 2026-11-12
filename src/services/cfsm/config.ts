@@ -47,7 +47,7 @@ export function apiUrl(base: string, path: string): string {
 }
 
 export function adminUrl(base: string): string {
-  return apiUrl(base, '/admin') + '#admin'
+  return apiUrl(base, '/admin') + '#/admin'
 }
 
 export function webSocketBase(base: string): string {

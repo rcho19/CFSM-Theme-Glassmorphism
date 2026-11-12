@@ -4,12 +4,13 @@ import type {
   CfsmSocketSubscription,
 } from '@/types/cfsm'
 import { normalizeSocketBatch } from './adapters'
-import { readStorage, STORAGE_KEYS, webSocketBase } from './config'
+import { webSocketBase } from './config'
 import { normalizeServerId } from './identifiers'
 
 const MAX_SUBSCRIPTION_IDS = 500
 const RECONNECT_BASE_DELAY_MS = 1_000
 const RECONNECT_MAX_DELAY_MS = 30_000
+const MAX_RECONNECT_ATTEMPTS = 10
 const STABLE_CONNECTION_MS = 10_000
 const KEEPALIVE_INTERVAL_MS = 30_000
 const POLICY_VIOLATION_CLOSE_CODE = 1008
@@ -86,10 +87,6 @@ function normalizedTimeoutMinutes(value: number): number {
   return Number.isInteger(value) && value >= 0 && value <= 1440 ? value : 0
 }
 
-function currentLocationHost(): string {
-  return typeof location === 'undefined' ? '' : location.host
-}
-
 export function sanitizeSubscriptionIds(ids: readonly string[]): string[] {
   const unique = new Set<string>()
   for (const id of ids) {
@@ -107,9 +104,7 @@ export function createCfsmSocketUrl(
 ): string {
   const url = new URL('/api/ws', webSocketBase(base))
   url.searchParams.set('subscribe', normalizeSubscribe(options.subscribe))
-  const token = readStorage(STORAGE_KEYS.jwt, options.storage)
-  const locationHost = options.locationHost ?? currentLocationHost()
-  if (token && url.host !== locationHost) url.searchParams.set('token', token)
+  // 同源由 CFSM Cookie 鉴权；跨源保持匿名，禁止把本地 JWT 放进 URL。
   return url.toString()
 }
 
@@ -163,6 +158,10 @@ export function createCfsmSocket(options: CfsmSocketOptions): CfsmSocketConnecti
   }
 
   function scheduleReconnect(): void {
+    if (reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      setState('unavailable')
+      return
+    }
     if (closed || reconnectTimer !== null || (subscribe === 'all' && ids.length === 0)) return
     const delay = Math.min(
       RECONNECT_MAX_DELAY_MS,

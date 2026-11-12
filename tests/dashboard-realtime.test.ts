@@ -173,7 +173,7 @@ describe('dashboard realtime coordination', () => {
     controller.dispose()
   })
 
-  it('keeps one low-frequency REST fallback after a 503 while WebSocket recovery backs off', async () => {
+  it('never polls REST after a 503 while WebSocket recovery backs off', async () => {
     vi.useFakeTimers()
     const factory = connectionFactory()
     const unavailable = Object.assign(new Error('temporarilyUnavailable'), { status: 503 })
@@ -197,19 +197,19 @@ describe('dashboard realtime coordination', () => {
     controller.start()
     factory.options[0]?.onState('unavailable')
     factory.options[0]?.onState('backoff')
-    expect(onFallbackChange.mock.calls).toEqual([[true]])
+    expect(onFallbackChange).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(29_999)
     expect(refreshRest).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
-    expect(refreshRest).toHaveBeenCalledOnce()
+    expect(refreshRest).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(30_000)
-    expect(refreshRest).toHaveBeenCalledTimes(2)
+    expect(refreshRest).not.toHaveBeenCalled()
     controller.dispose()
-    expect(onFallbackChange).toHaveBeenLastCalledWith(false)
+    expect(onFallbackChange).not.toHaveBeenCalled()
   })
 
-  it('reads the interval when the fallback starts and never polls faster than the push cadence', async () => {
+  it('ignores legacy polling intervals and never starts REST timers', async () => {
     vi.useFakeTimers()
     const factory = connectionFactory()
     const refreshRest = vi.fn(async () => undefined)
@@ -233,16 +233,16 @@ describe('dashboard realtime coordination', () => {
     await vi.advanceTimersByTimeAsync(4_999)
     expect(refreshRest).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
-    expect(refreshRest).toHaveBeenCalledOnce()
+    expect(refreshRest).not.toHaveBeenCalled()
 
     // 改设置后不必重建连接：下一次回退启动时读到新值。
     seconds = 20
     factory.options[0]?.onState('open')
     factory.options[0]?.onState('backoff')
     await vi.advanceTimersByTimeAsync(19_999)
-    expect(refreshRest).toHaveBeenCalledOnce()
+    expect(refreshRest).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
-    expect(refreshRest).toHaveBeenCalledTimes(2)
+    expect(refreshRest).not.toHaveBeenCalled()
     controller.dispose()
   })
 
