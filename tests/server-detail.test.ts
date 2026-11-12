@@ -247,6 +247,17 @@ describe('实时缓冲的历史垫底', () => {
     ...liveHistoryPoint(normalizeServer({ id: 'node', name: 'Node', cpu }, source), timestamp),
   })
 
+  it('秒级历史与毫秒推送统一时间后再裁剪和去重', () => {
+    const seeded = seedLivePoints(
+      [point(START / 1000, 1), point((START + 5_000) / 1000, 2), point(Number.NaN, 3)],
+      [point(START + 5_000, 9)],
+      START + 10_000,
+    )
+    expect(seeded.map(({ timestamp, cpu }) => [timestamp, cpu])).toEqual([
+      [START, 1], [START + 5_000, 9],
+    ])
+  })
+
   it('只取还在窗口内的历史点，按时间升序', () => {
     const now = START + LIVE_WINDOW_MS
     const seeded = seedLivePoints(

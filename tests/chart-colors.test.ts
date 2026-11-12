@@ -99,6 +99,24 @@ const START = 1_700_000_000_000
 const points = Array.from({ length: 6 }, (_, index) => point(START + index * 300_000, index))
 const rows = buildChartRows(points)
 
+it('孤立负载采样显示点，连续采样无线点，缺口不连接也不画成零', () => {
+  const ctx = context(false, false, [point(START, 0), point(START + 1_000, 1)])
+  ctx.rows = [
+    { timestamp: START, point: points[0] ?? null },
+    { timestamp: START + 1_000, point: null },
+    { timestamp: START + 2_000, point: points[1] ?? null },
+    { timestamp: START + 3_000, point: points[2] ?? null },
+  ]
+  const series = cpuChartOption(ctx).series[0]!
+  expect(series.connectNulls).toBe(false)
+  expect(series.data[1]).toBeNull()
+  expect(series.showSymbol).toBe(true)
+  expect(series.symbolSize(series.data[0], { dataIndex: 0 })).toBeGreaterThan(0)
+  expect(series.symbolSize(series.data[1], { dataIndex: 1 })).toBe(0)
+  expect(series.symbolSize(series.data[2], { dataIndex: 2 })).toBe(0)
+  expect(series.symbolSize(series.data[3], { dataIndex: 3 })).toBe(0)
+})
+
 function context(accessible = false, dark = false, source: readonly HistoryPoint[] = points): LoadChartContext {
   return {
     rows: buildChartRows(source),

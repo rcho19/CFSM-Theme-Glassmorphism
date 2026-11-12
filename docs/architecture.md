@@ -154,7 +154,7 @@ schema defaults
 - 连接不可用时以单个低频 REST 循环补偿；任何失败都继续展示最后一份真实快照及来源错误。
 - 五分钟在线阈值在 adapter/domain 层保持一致。
 - 详情连接使用 `/api/ws?subscribe=<id>`，open 后发送 `{ type: "subscribe", scope: <id>, ids: [] }` 激活 CFSM 的 Agent 实时提示，但绝不使用 all-scope，也不订阅其他节点；只合并同 ID sample。隐藏时关闭、可见时先请求 `/api/server` 再建立新连接，连接时限仍要求用户明确选择。
-- 详情负载图的「实时」档位复用这条 single-server 连接：优先从已经加载的 History 立即取最近 10 分钟垫底，确实没有近点时才单独请求 10 分钟 History；此后把 `batchUpdate.samples[]` 按采样时间逐条 partial merge 并逐条入图，完整保留 Agent 的 `wss_report_interval` 节奏，前端不改成固定 10 秒。历史桶与 WSS 密度可以不同；实时图只在相邻真实采样超过 1 分钟时插入断点，因此刷新、节点切换或时间档位切换不会把密度变化误画成大段空白。缓冲只保留最近 10 分钟且最多 600 点，切到历史档位不会清空它。
+- 详情负载图的「实时」档位复用这条 single-server 连接：优先从已经加载的 History 立即取最近 10 分钟垫底，确实没有近点时才单独请求 10 分钟 History；此后把 `batchUpdate.samples[]` 按采样时间逐条 partial merge 并逐条入图，完整保留 Agent 的 `wss_report_interval` 节奏，前端不改成固定 10 秒。历史垫底先统一秒/毫秒时间戳，再按窗口裁剪并与推送去重。历史桶与 WSS 密度可以不同；实时图只在相邻真实采样超过 1 分钟时插入断点；被断点隔离的单独采样以圆点显示，连续段不显示点，不跨缺口插值。缓冲只保留最近 10 分钟且最多 600 点，切到历史档位不会清空它。
 
 ## Multi API Base
 

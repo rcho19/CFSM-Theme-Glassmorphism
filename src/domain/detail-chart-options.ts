@@ -298,7 +298,17 @@ function line(spec: LineSpec) {
     name: spec.name,
     type: 'line' as const,
     data: spec.data,
-    showSymbol: false,
+    // CFSM 的稀疏样本可能被真实断点完全隔开；隐藏所有点会让有数据的图看起来为空。
+    // 只显示孤立点，连续段仍保持上游的无线点折线，不跨缺口插值。
+    showSymbol: true,
+    showAllSymbol: true,
+    symbol: 'circle',
+    symbolSize: (_value: unknown, params: { dataIndex: number }): number => {
+      const index = params.dataIndex
+      return spec.data[index] !== null && spec.data[index] !== undefined
+        && (spec.data[index - 1] ?? null) === null
+        && (spec.data[index + 1] ?? null) === null ? 4 : 0
+    },
     connectNulls: false,
     ...(spec.yAxisIndex === undefined ? {} : { yAxisIndex: spec.yAxisIndex }),
     lineStyle: {

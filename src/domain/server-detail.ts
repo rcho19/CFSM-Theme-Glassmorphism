@@ -246,11 +246,11 @@ export function seedLivePoints(
 ): HistoryPoint[] {
   const earliest = now - windowMs
   const byTimestamp = new Map<number, HistoryPoint>()
-  for (const point of history) {
-    if (point.timestamp >= earliest) byTimestamp.set(point.timestamp, point)
-  }
-  for (const point of live) {
-    if (point.timestamp >= earliest) byTimestamp.set(point.timestamp, point)
+  for (const point of [...history, ...live]) {
+    const timestamp = normalizeTimestampMilliseconds(point.timestamp)
+    if (timestamp !== null && timestamp >= earliest) {
+      byTimestamp.set(timestamp, { ...point, timestamp })
+    }
   }
   const merged = [...byTimestamp.values()].sort((left, right) => left.timestamp - right.timestamp)
   return merged.length > maxPoints ? merged.slice(merged.length - maxPoints) : merged
