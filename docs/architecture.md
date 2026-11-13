@@ -98,7 +98,7 @@ v1.1.12 维护预览没有更改 adapter、normalized model 或 wire 契约。�
 - `dashboard-preferences.ts` 只保存以 source+id 标识的收藏。旧快照中的主题、视图与离线排序由 theme settings 层一次性迁移，避免同一外观状态有两个写入者。
 - `theme-settings.ts` 管理 48 项 schema 的 defaults、原始 backend 快照、版本化 local override、未保存 draft 与实际 runtime。它集中完成规范化、即时预览、本地保存/清除、完整后端保存和 `/api/config` 回读；组件不读取 localStorage 或 wire `theme_options`。同一草稿的重复保存共享一个 Promise；在途期间提交不同草稿会明确拒绝并提示等待，新的编辑保留供重试，不会冒充首次保存成功。
 - `finance.ts`（v1.1.7）管理财务偏好（显示币种、排除免费节点、手动汇率）与汇率状态：当日缓存、单个进行中的请求、失败后退回旧缓存或参考表。偏好只存浏览器本地，不进入 `theme_options`。
-- `server-detail.ts` 管理单节点 REST、所属 source config、History、single-server WebSocket、错误/空状态和页面生命周期。首页传入 owning base；刷新直达链接时可在已配置 bases 上用 `/api/server` 解析归属，但绝不拉取全量列表。配置、单节点、可见性列表与 History 并发启动；owning config 有独立 pending/ready/error 状态，慢配置不阻塞数据请求，但 UI 在配置确定前保持骨架屏，避免设置驱动的指标卡按默认值闪现。History 切换范围会清除上一范围，原范围 revalidate 失败则保留最后真实快照；revision 与局部 AbortController 共同阻止旧请求、卸载后请求和慢 REST 覆盖新 WSS。
+- `server-detail.ts` 管理单节点 REST、所属 source config、History、single-server WebSocket、错误/空状态和页面生命周期。首页传入 owning base；刷新直达链接时可在已配置 bases 上用 `/api/server` 解析归属，但绝不拉取全量列表。配置、单节点、可见性列表与 History 并发启动；owning config 有独立 pending/ready/error 状态，慢配置不阻塞数据请求，但 UI 在配置确定前保持骨架屏，避免设置驱动的指标卡按默认值闪现。History 切换范围加载期间保留最近成功的图表，由蒙层标示更新中；请求范围与已显示范围分别记录，时间格式及丢包说明沿用实际数据范围，成功后整体替换，失败照实显示错误，切换节点仍清空旧数据。revision 与局部 AbortController 共同阻止旧请求、卸载后请求和慢 REST 覆盖新 WSS。
 - store 对异步过程提供 idle/loading/ready/partial/error，而不是让 UI 猜测；多来源之一失败时保留其他来源的真实结果与失败原因。
 
 ### UI

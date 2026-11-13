@@ -7,6 +7,7 @@ const now = Date.now()
 // 稀疏实时验收：两分钟一个真实样本，并使用秒级历史时间戳。
 const sparseLive = process.env.CFSM_FIXTURE_SPARSE_LIVE === '1'
 const settingsPolicy = process.env.CFSM_FIXTURE_SETTINGS_POLICY
+const historyDelayMs = Math.min(5000, Math.max(0, Number(process.env.CFSM_FIXTURE_HISTORY_DELAY_MS) || 0))
 const counts = {}
 const data = {
   id: 'fixture-1', name: '本地合成测试节点', server_group: '验收数据', region: 'JP',
@@ -32,9 +33,12 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/api/config') return json({ site_title: '本地主题验收', version: 'fixture', is_public: true, authorization: settingsPolicy === 'admin', turnstile_enabled: false, custom_ct_name: '电信', custom_cu_name: '联通', custom_cm_name: '移动', theme_options: themeOptions })
   if (url.pathname === '/api/servers') return json({ servers:[data], stats:{ total:1,online:1,offline:0 }, sysConfig:{show_three_net_details:true,show_price:true,show_expire:true,show_tf:true} })
   if (url.pathname === '/api/server') return json(data)
-  if (url.pathname === '/api/history/all') return json(sparseLive
-    ? Array.from({length:5},(_,i)=>({...data,timestamp:Math.floor((now-(5-i)*120000)/1000),cpu:10+i*5}))
-    : data.ping.map((point) => ({...data,timestamp:point.ts,ping_ct:point.ct,ping_cu:point.cu,ping_cm:point.cm})))
+  if (url.pathname === '/api/history/all') {
+    if (historyDelayMs > 0) await new Promise(resolve => setTimeout(resolve, historyDelayMs))
+    return json(sparseLive
+      ? Array.from({length:5},(_,i)=>({...data,timestamp:Math.floor((now-(5-i)*120000)/1000),cpu:10+i*5}))
+      : data.ping.map((point) => ({...data,timestamp:point.ts,ping_ct:point.ct,ping_cu:point.cu,ping_cm:point.cm})))
+  }
   if (url.pathname === '/__counts') return json(counts)
   if (url.pathname === '/api/theme_options') {res.statusCode=401;return json({error:'unauthorized'})}
   if (url.pathname.startsWith('/flags/') || url.pathname.startsWith('/os-icons/')) { res.setHeader('Content-Type','image/svg+xml');return res.end('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="14"><rect width="20" height="14" fill="#ddd"/></svg>') }

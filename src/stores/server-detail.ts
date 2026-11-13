@@ -67,13 +67,15 @@ export const useServerDetailStore = defineStore('server-detail', () => {
   const sourceConfigState = ref<DetailLoadState>('idle')
   const history = shallowRef<HistorySeries | null>(null)
   /*
-   * 默认 1 小时。CFSM 对两类窗口都分桶取样，只是上限不同：大于 1 小时用站点配置的
+   * 默认 10 分钟。CFSM 对两类窗口都分桶取样，只是上限不同：大于 1 小时用站点配置的
    * `long_history_points`，不大于 1 小时用服务端常量 160，桶宽都是
    * `max(10 秒, 窗口 / 上限)`，每桶只返回一条记录。1 小时窗口约 23 秒一个桶，
    * 通常宽于节点自己的上报间隔，所以看起来接近全量，但那是数据密度的结果而非接口保证。
    * 两张图共用这一个窗口，冷启动只发一次历史请求。
    */
   const historyHours = ref<HistoryHours>(0.167)
+  // 请求中的目标范围与已显示数据的实际范围分开，不能把旧图标成新范围。
+  const displayedHistoryHours = ref<HistoryHours>(0.167)
   /*
    * 「实时」档位：先复用已加载历史的最近 10 分钟，必要时再取一次 10 分钟历史，
    * 随后逐条接续 WebSocket 样本。缓冲随节点切换清空并重新垫底；窗口与条数上限在
@@ -119,6 +121,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
   const historyPoints = computed(() => history.value?.points ?? [])
   const pingHistory = computed(() => (pingFollowsHistory.value ? history.value : ownPingHistory.value))
   const pingHistoryHours = computed(() => (pingFollowsHistory.value ? historyHours.value : ownPingHistoryHours.value))
+  const displayedPingHistoryHours = computed(() => (pingFollowsHistory.value ? displayedHistoryHours.value : ownPingHistoryHours.value))
   const pingHistoryState = computed(() => (pingFollowsHistory.value ? historyState.value : ownPingHistoryState.value))
   const pingHistoryIssue = computed(() => (pingFollowsHistory.value ? historyIssue.value : ownPingHistoryIssue.value))
   const pingHistoryPoints = computed(() => pingHistory.value?.points ?? [])
@@ -244,7 +247,6 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     const current = server.value
     const controller = requestController
     if (!current || !controller) return
-    const rangeChanged = hours !== historyHours.value
     historyHours.value = hours
     // 用户把负载图调回延迟图正在用的窗口时，重新跟随，避免两份相同的历史。
     if (!pingFollowsHistory.value && ownPingHistoryHours.value === hours) {
@@ -255,7 +257,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     }
     historyState.value = 'loading'
     historyIssue.value = null
-    if (rangeChanged) history.value = null
+    // 保留最近成功的真实历史，让 loading 蒙层覆盖原图；切换节点仍在 open 中清空。
     const expectedRevision = revision
     const seq = ++historySeq
     const stale = (): boolean => (
@@ -267,6 +269,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
       })
       if (stale()) return
       history.value = result
+      displayedHistoryHours.value = hours
       historyState.value = result.points.length > 0 ? 'ready' : 'empty'
       if (liveMode.value && livePoints.value.length === 0) {
         livePoints.value = seedLivePoints(result.points, livePoints.value, Date.now())
@@ -361,6 +364,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     sourceConfig.value = null
     sourceConfigState.value = 'idle'
     history.value = null
+    displayedHistoryHours.value = historyHours.value
     livePoints.value = []
     ownPingHistory.value = null
     issue.value = null
@@ -429,6 +433,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     sourceConfigState,
     history,
     historyHours,
+    displayedHistoryHours,
     liveMode,
     livePoints,
     liveRows,
@@ -436,6 +441,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     historyPoints,
     pingHistory,
     pingHistoryHours,
+    displayedPingHistoryHours,
     pingHistoryPoints,
     sourceBase,
     state,

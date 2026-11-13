@@ -52,6 +52,7 @@ const {
   sourceConfigState,
   historyPoints,
   historyHours,
+  displayedHistoryHours,
   historyState,
   historyIssue,
   liveMode,
@@ -66,7 +67,7 @@ const accessible = computed(() => theme.runtime.colorVisionMode === '色觉友�
 const rows = computed(() => (liveMode.value ? liveRows.value : buildChartRows(historyPoints.value)))
 const context = computed<LoadChartContext>(() => ({
   rows: rows.value,
-  hours: loadChartHours(liveMode.value, historyHours.value),
+  hours: loadChartHours(liveMode.value, displayedHistoryHours.value),
   load: getLoadChartPalette(accessible.value),
   series: getChartSeriesPalette(accessible.value),
   theme: getChartThemeColors(theme.resolvedTheme === 'dark'),
@@ -187,7 +188,7 @@ function retry(): void {
   <section class="load-chart" aria-label="负载历史">
     <AppTabs v-model="rangeModel" class="detail-range-tabs" list-label="负载图时间范围" :items="rangeItems" />
 
-    <div class="chart-spinner" :class="{ 'is-loading': loading }">
+    <div class="chart-spinner" :class="{ 'is-loading': loading }" :aria-busy="loading">
       <!--
         历史请求的失败只属于历史档位。与上游一样，切到「实时」时不再显示它（上游进入实时会先清空
         error）：实时档位画的是推送数据，不能被另一个时段的 401 / 503 挡住。

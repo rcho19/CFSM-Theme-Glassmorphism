@@ -496,17 +496,38 @@ describe('detail page request budget', () => {
       expect(detail.historyIssue).not.toBeNull()
     })
 
-    it('clears the old range while a different history window is pending', async () => {
+    it('保留旧图和实际范围直到新窗口成功返回，加载时不缩成空白', async () => {
       const gate = gateNetwork()
       setActivePinia(createPinia())
       const detail = await openGated(gate)
+      const previous = detail.history
 
       const pending = detail.loadHistory(24)
       expect(detail.historyHours).toBe(24)
-      expect(detail.history).toBeNull()
+      expect(detail.history).toBe(previous)
+      expect(detail.displayedHistoryHours).toBe(1)
+      expect(detail.displayedPingHistoryHours).toBe(1)
+      expect(detail.historyState).toBe('loading')
       await gate.release(24)
       await pending
       expect(detail.history?.points.at(0)?.cpu).toBe(24)
+      expect(detail.displayedHistoryHours).toBe(24)
+      expect(detail.displayedPingHistoryHours).toBe(24)
+    })
+
+    it('新范围失败时保留旧数据归属范围，并照实显示错误', async () => {
+      const gate = gateNetwork()
+      setActivePinia(createPinia())
+      const detail = await openGated(gate)
+      const previous = detail.history
+      const pending = detail.loadHistory(24)
+      await gate.fail(24)
+      await pending
+      expect(detail.history).toBe(previous)
+      expect(detail.historyHours).toBe(24)
+      expect(detail.displayedHistoryHours).toBe(1)
+      expect(detail.historyState).toBe('error')
+      expect(detail.historyIssue).not.toBeNull()
     })
 
     it('opening another node discards the response still in flight for the old one', async () => {

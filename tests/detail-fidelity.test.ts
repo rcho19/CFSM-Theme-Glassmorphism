@@ -321,7 +321,7 @@ describe('详情页 DOM 与分区结构', () => {
   })
 
   it('「实时」档位的时间格式不沿用上一次选中的历史窗口', () => {
-    expect(loadChart).toContain('hours: loadChartHours(liveMode.value, historyHours.value)')
+    expect(loadChart).toContain('hours: loadChartHours(liveMode.value, displayedHistoryHours.value)')
   })
 
   /*
