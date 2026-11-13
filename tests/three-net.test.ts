@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { bindingKey, threeNetRows, threeNetTargets } from '@/domain/three-net'
-import { normalizeServer, normalizeServerCollection } from '@/services/cfsm/adapters'
+import { normalizeHistory, normalizeServer, normalizeServerCollection } from '@/services/cfsm/adapters'
+import { probeStats } from '@/domain/server-detail'
 import { toGlassServer } from '@/services/cfsm/glassmorphism-adapter'
 import { buildSparklineGeometry, robustDomain } from '@/utils/sparklinePath'
 import { DEFAULT_THEME_SETTINGS, validateThemeSettingsDraft } from '@/theme/settings'
 
 const source = { base: 'https://owner.invalid', label: 'owner' }
 describe('三网数据和刷新', () => {
+  it('首页两小时有丢包、详情最近十分钟无丢包可以同时成立', () => {
+    const now = Date.now()
+    const samples = [
+      { timestamp: now - 60 * 60_000, loss_ct: 20, ping_ct: 80 },
+      { timestamp: now - 5 * 60_000, loss_ct: 0, ping_ct: 80 },
+    ]
+    const current = toGlassServer(normalizeServer({
+      id: 'node', ping_ct: 80, loss_ct: 0,
+      ping: samples.map((point) => ({ ts: point.timestamp, ct: point.ping_ct })),
+      loss: samples.map((point) => ({ ts: point.timestamp, ct: point.loss_ct })),
+    }, source), null)
+    expect(threeNetRows(current, '{}')[0]?.loss).toBe('10.0%')
+    const recent = normalizeHistory(samples.filter((point) => point.timestamp >= now - 10 * 60_000))
+    expect(probeStats(recent, 'ct').loss).toBe(0)
+  })
   it('绑定按来源及节点隔离，空选择保持为空，失效字段不伪装为线路', () => {
     const server = { sourceBase: source.base, id: 'same' }
     const raw = JSON.stringify({ [bindingKey(source.base)]: ['cm'], [bindingKey(source.base, 'same')]: [], [bindingKey('https://other.invalid', 'same')]: ['cu'] })

@@ -333,7 +333,7 @@ function retry(): void {
               <div class="ping-task__stats">
                 <span class="ping-task__avg" title="平均延迟">{{ avgText(task) }}</span>
                 <span class="is-dim">·</span>
-                <span title="丢包率">{{ lossText(task) }}</span>
+                <span :title="`${HISTORY_RANGE_LABELS[pingHistoryHours]}历史窗口的采样平均丢包率；首页统计最近两小时，采样和时间范围可能不同`">{{ lossText(task) }}</span>
                 <template v-if="task.stats.ratio !== null">
                   <span class="is-dim">·</span>
                   <span title="波动率">{{ task.stats.ratio.toFixed(2) }}</span>

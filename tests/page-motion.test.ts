@@ -132,11 +132,11 @@ describe('接线与样式', () => {
     expect(routerSource).toContain('installNavigationMotion(router)')
   })
 
-  it('首页保留视图状态，进入独立详情时释放全量订阅，返回只重建连接', () => {
+  it('首页保留视图状态，离开释放全量订阅，返回先补快照再重建连接', () => {
     expect(home).toContain("defineOptions({ name: 'HomeView' })")
-    expect(home).toMatch(/onActivated\(\(\) => \{\n\s+viewActive = true\n\s+if \(homeReady\) realtime.start\(refreshRest\)/)
-    // 离开首页只记录不在前台，不停止实时连接；实时连接只在真正卸载时释放。
-    expect(home).toMatch(/onDeactivated\(\(\) => \{\n\s+viewActive = false\n\s+realtime.stop\(\)/)
+    expect(home).toMatch(/onActivated\(async \(\) => \{[\s\S]*?await refreshRest\(\)[\s\S]*?if \(viewActive && expectedActivation === activationRevision\) realtime.start\(refreshRest\)/)
+    // 离开首页即释放订阅，并使在途恢复失效，不能在详情页重新打开全量连接。
+    expect(home).toMatch(/onDeactivated\(\(\) => \{\n\s+viewActive = false\n\s+activationRevision \+= 1\n\s+realtime.stop\(\)/)
     expect(home).toContain('onUnmounted(() => realtime.stop())')
   })
 

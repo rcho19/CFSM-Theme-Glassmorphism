@@ -900,6 +900,10 @@ a {
 
 .icon-button:disabled {
   opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.icon-button.is-spinning:disabled {
   cursor: wait;
 }
 

@@ -146,6 +146,28 @@ afterEach(() => {
 })
 
 describe('detail page request budget', () => {
+  it('从实时回到同一历史档位只补一次共享请求，不复用离开前的旧快照', async () => {
+    const calls = stubNetwork()
+    setActivePinia(createPinia())
+    const app = useAppStore()
+    app.apiBases = [BASE]
+    app.applyConfig(normalizeSiteConfig({ site_title: 'demo' }))
+    const detail = useServerDetailStore()
+    await detail.open('node-1', [BASE])
+    await detail.loadHistory(6)
+    const previous = detail.history
+    await detail.setLiveMode(true)
+    const before = historyCalls(calls).length
+    await detail.selectHistoryRange(6)
+    expect(historyCalls(calls)).toHaveLength(before + 1)
+    expect(detail.history).not.toBe(previous)
+    expect(detail.liveMode).toBe(false)
+    expect(detail.pingHistory).toBe(detail.history)
+    // 已在历史档位时重复选择，不继续发请求。
+    await detail.selectHistoryRange(6)
+    expect(historyCalls(calls)).toHaveLength(before + 1)
+    detail.close()
+  })
   it('reuses a still-pending primary config request instead of duplicating it', async () => {
     const calls: string[] = []
     let releaseConfig: ((response: Response) => void) | undefined

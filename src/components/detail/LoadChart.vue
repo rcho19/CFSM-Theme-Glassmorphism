@@ -88,9 +88,8 @@ const rangeModel = computed({
     }
     const hours = HISTORY_HOURS.find((item) => String(item) === value)
     if (hours === undefined) return
-    // 回到历史档位：窗口没变就不再请求，直接用已经取回的那份。
-    detail.setLiveMode(false)
-    if (hours !== historyHours.value) void detail.loadHistory(hours)
+    // 用户返回历史时补一次当前窗口，不能把进入实时前的旧快照当成新数据。
+    void detail.selectHistoryRange(hours)
   },
 })
 

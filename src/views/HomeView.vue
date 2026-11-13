@@ -238,34 +238,42 @@ watch(groups, (nextGroups) => {
 // 只有首页在前台时才改网页标题，否则停留详情页期间配置重读、站点名变化会把详情页的标题改掉。
 let viewActive = true
 let homeReady = false
+let activationRevision = 0
+let refreshInFlight: Promise<void> | null = null
 
 watch(siteTitle, (title) => {
   if (title && viewActive) document.title = title
 }, { immediate: true })
 
-// KeepAlive 回到首页时组件不重建，上面的 watch 不会再执行，这里恢复被详情页改写的标题。
-onActivated(() => {
+// KeepAlive 返回时恢复标题、补一次快照；只有仍处于本次激活时才恢复连接。
+onActivated(async () => {
   viewActive = true
-  if (homeReady) realtime.start(refreshRest)
+  const expectedActivation = ++activationRevision
   if (siteTitle.value) document.title = siteTitle.value
+  if (homeReady) {
+    await refreshRest()
+    if (viewActive && expectedActivation === activationRevision) realtime.start(refreshRest)
+  }
 })
 
 onDeactivated(() => {
   viewActive = false
+  activationRevision += 1
   realtime.stop()
 })
 
-async function refreshRest(): Promise<void> {
-  if (refreshing.value) return
+function refreshRest(): Promise<void> {
+  if (refreshInFlight) return refreshInFlight
   refreshing.value = true
-  try {
-    await Promise.all([
-      app.initialize(),
-      serverStore.load(),
-    ])
-  } finally {
+  const pending = Promise.all([
+    app.initialize(),
+    serverStore.load(),
+  ]).then(() => undefined).finally(() => {
     refreshing.value = false
-  }
+    if (refreshInFlight === pending) refreshInFlight = null
+  })
+  refreshInFlight = pending
+  return pending
 }
 
 // 通过 Turnstile 人机验证后重新拉取数据：此前的请求都因缺少凭据被 CFSM 以 403 拒绝。

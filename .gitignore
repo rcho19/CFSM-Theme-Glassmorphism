@@ -14,3 +14,6 @@ outputs-*.log
 docs/audit-evidence-*/
 docs/2026-11-11-主题审查与三网UI实施计划.md
 
+# 本地运行时诊断日志，不属于源码或发布产物（匹配所有目录）。
+debug.log
+

@@ -1,5 +1,7 @@
 # 架构
 
+> 2026-11-13 快照恢复修正：首页 KeepAlive 再激活时补一次共享列表请求，再恢复全量订阅，过时激活回调不会在详情页重开连接。详情从实时返回历史时补一次所选窗口请求，负载与延迟仍共用响应。其余历史快照不由定时器推进，不增加周期 REST；这是用户主动导航的恢复动作。详情丢包 tooltip 明示所选窗口，首页统计仍是两小时窗口。
+
 > 1.3.0-dev.1：新增 credential-policy 来源隔离、three-net 领域选择器、ThreeNetPing/ThreeNetSettings 和上游 Sparkline。首页历史为接口快照，不做周期 REST 刷新。按 origin 缓存配置，后台开关贯穿 adapter → store → UI。参考 `IMPLEMENTATION_SPEC.md`。
 
 ## 目标

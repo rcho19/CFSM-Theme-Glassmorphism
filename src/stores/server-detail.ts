@@ -125,8 +125,8 @@ export const useServerDetailStore = defineStore('server-detail', () => {
   /** 「实时」缓冲的绘图行：缺口按绝对时间判断，密度差异不算断线。 */
   const liveRows = computed(() => buildLiveChartRows(livePoints.value))
   /*
-   * 切换「实时」档位。历史窗口保持不变，回到历史档位时不重新请求；延迟区不跟随，
-   * 它仍然画自己的历史窗口。
+   * 切换「实时」档位时历史窗口保持不变，延迟区仍画自己的历史快照。
+   * 用户选择返回历史时，由 selectHistoryRange 主动补一次共享请求。
    *
    * 缓冲是空的时候（刚打开页面就切过来）先取一次最近 10 分钟的历史垫底，否则要等
    * 第一条推送才有东西，看起来像坏了。这份历史与推送样本同源，只是服务端按约 10 秒
@@ -281,6 +281,15 @@ export const useServerDetailStore = defineStore('server-detail', () => {
   async function loadPingHistory(hours: HistoryHours = pingHistoryHours.value): Promise<void> {
     pingFollowsHistory.value = true
     if (hours !== historyHours.value || historyState.value === 'error') await loadHistory(hours)
+  }
+
+  /** 用户从实时返回历史时主动补一次快照；两张历史图继续共用响应，不进行轮询。 */
+  async function selectHistoryRange(hours: HistoryHours): Promise<void> {
+    const returningFromLive = liveMode.value
+    liveMode.value = false
+    if (returningFromLive || hours !== historyHours.value || historyState.value === 'error') {
+      await loadHistory(hours)
+    }
   }
 
   /*
@@ -444,6 +453,7 @@ export const useServerDetailStore = defineStore('server-detail', () => {
     open,
     refresh,
     loadHistory,
+    selectHistoryRange,
     loadPingHistory,
     continueAfterTimeout,
     pauseAfterTimeout,
