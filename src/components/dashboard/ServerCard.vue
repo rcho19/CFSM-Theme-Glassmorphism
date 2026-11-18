@@ -55,6 +55,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   open: []
+  openPing: []
   toggleFavorite: []
 }>()
 
@@ -526,7 +527,7 @@ function hideMissingImage(event: Event): void {
         </div>
       </div>
 
-      <ThreeNetPing v-if="threeNetEnabled && server.showThreeNet === true" :server="server" @open="emit('open')" />
+      <ThreeNetPing v-if="threeNetEnabled && server.showThreeNet === true" :server="server" @open="emit('openPing')" />
       <div v-else-if="primaryProbe && !threeNetEnabled" class="node-probes">
         <div class="node-probe">
           <div class="node-probe__head" :title="latencyTitle">

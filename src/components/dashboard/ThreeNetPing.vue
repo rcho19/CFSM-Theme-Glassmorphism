@@ -41,16 +41,18 @@ function time(timestamp: number): string { return new Date(timestamp).toLocaleTi
     <p v-if="!rows.length" class="three-net__caption">
       未选择可用线路，请在主题设置中调整。
     </p>
-    <div v-for="row in rows" :key="row.target" class="three-net__row" :class="{ 'three-net__row--failed': row.failed }" :style="{ color: row.latencyTone }">
-      <button type="button" class="three-net__label" :title="`${row.label}，打开完整图表`" @click="emit('open')">
+    <div v-for="row in rows" :key="row.target" class="three-net__row" :class="{ 'three-net__row--failed': row.failed }">
+      <span class="three-net__dot" :style="{ background: row.latencyTone }" aria-hidden="true" />
+      <button type="button" class="three-net__label" :title="`${row.label}，打开详情页延迟图表`" @click="emit('open')">
         {{ row.label }}
       </button>
-      <button type="button" class="three-net__value" title="窗口采样平均延迟" @click="emit('open')">
+      <button type="button" class="three-net__value" :style="{ color: row.latencyTextTone }" title="窗口采样平均延迟" @click="emit('open')">
         {{ row.latency }}
       </button>
       <button
         v-if="row.points.length"
         type="button" class="three-net__history" :aria-label="`${row.label} 历史采样，左右方向键查看`"
+        :style="{ color: row.latencyTone }"
         @pointerdown="inspect($event, row.target, row.points.length)" @pointermove="inspect($event, row.target, row.points.length)"
         @pointerleave="selection = null" @pointercancel="selection = null" @blur="selection = null"
         @keydown="keyboard($event, row.target, row.points.length)"
@@ -67,23 +69,57 @@ function time(timestamp: number): string { return new Date(timestamp).toLocaleTi
           {{ inspected(row.target)!.loss === null ? '无丢包样本' : `${inspected(row.target)!.loss}%` }}
         </span>
       </button>
-      <button type="button" class="three-net__value" :style="{ color: row.lossTone }" title="窗口采样平均丢包" @click="emit('open')">
-        丢包 {{ row.loss }}
+      <button type="button" class="three-net__value three-net__loss" title="窗口采样平均丢包" @click="emit('open')">
+        <span class="three-net__loss-label">丢包</span>
+        <span :style="{ color: row.lossTextTone }">{{ row.loss }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.three-net { min-width: 0; color: var(--signal-1); }
+.three-net {
+  --three-net-text-1: #047857;
+  --three-net-text-2: #15803d;
+  --three-net-text-3: #4d7c0f;
+  --three-net-text-4: #a16207;
+  --three-net-text-5: #be123c;
+  min-width: 0; color: var(--ink);
+  display: grid; grid-template-columns: 6px minmax(0, max-content) max-content minmax(3rem, 1fr) max-content; column-gap: 4px;
+}
+:global([data-theme='dark'] .three-net) {
+  --three-net-text-1: #6ee7b7;
+  --three-net-text-2: #86efac;
+  --three-net-text-3: #bef264;
+  --three-net-text-4: #fde047;
+  --three-net-text-5: #fda4af;
+}
+:global([data-color-vision='friendly'] .three-net) {
+  --three-net-text-1: #0072b2;
+  --three-net-text-2: #0072b2;
+  --three-net-text-3: #007a58;
+  --three-net-text-4: #946200;
+  --three-net-text-5: #b34700;
+}
+:global([data-color-vision='friendly'][data-theme='dark'] .three-net) {
+  --three-net-text-1: #9bd7f0;
+  --three-net-text-2: #9bd7f0;
+  --three-net-text-3: #44c7a0;
+  --three-net-text-4: #f5bf55;
+  --three-net-text-5: #f5b48c;
+}
 .three-net--offline { opacity: .5; }
 .three-net__caption { color: var(--muted); font-size: 10px; margin: 3px 0; }
-.three-net__row { display: grid; grid-template-columns: minmax(0, .8fr) max-content minmax(3.5rem, 1fr) max-content; gap: 4px; align-items: center; min-height: 22px; font-size: 11px; }
-.three-net__row--failed { color: var(--signal-5); }
+.three-net__caption { grid-column: 1 / -1; }
+.three-net__row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 22px; font-size: 11px; }
+.three-net__dot { width: 6px; height: 6px; border-radius: 50%; }
 .three-net button { border: 0; background: transparent; color: inherit; font: inherit; padding: 0; cursor: pointer; min-width: 0; }
-.three-net__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
-.three-net__value { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.three-net__history { height: 18px; position: relative; touch-action: pan-y; }
+.three-net .three-net__label { color: var(--muted); max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.three-net__loss-label { color: var(--muted); }
+.three-net .three-net__value { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.three-net .three-net__loss { grid-column: 5; display: inline-flex; align-items: baseline; gap: 4px; }
+.three-net__loss-label { font-weight: 400; }
+.three-net__history { grid-column: 4; height: 18px; position: relative; touch-action: pan-y; }
 .three-net__history :deep(svg) { width: 100%; height: 100%; }
 .three-net__tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); z-index: 40; width: max-content; max-width: 190px; padding: 6px; background: var(--ink); color: var(--background); border-radius: 5px; pointer-events: none; line-height: 1.4; }
 .three-net__bars { display: flex; gap: 1px; height: 12px; }

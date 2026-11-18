@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { hasMultipleSources, serverDetailLocation } from '@/router/links'
 
 describe('详情页链接生成', () => {
+  it('三网入口直达延迟区，并保留节点的来源归属', () => {
+    expect(serverDetailLocation('node-1', 'https://b.example', true, 'ping')).toEqual({
+      name: 'server-detail', params: { id: 'node-1' },
+      query: { source: 'https://b.example', section: 'ping' },
+    })
+    expect(serverDetailLocation('node-1', 'https://a.example', false, 'ping')).toEqual({
+      name: 'server-detail', params: { id: 'node-1' }, query: { section: 'ping' },
+    })
+  })
   it('单后端不写 source，链接就是 /#/server/<id>', () => {
     expect(serverDetailLocation('node-1', 'https://a.example', false)).toEqual({
       name: 'server-detail',

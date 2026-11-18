@@ -294,11 +294,12 @@ async function refresh(): Promise<void> {
  * 链接由 `router/links` 统一生成：多 apiBase 场景仍然带上该节点的 owning source，
  * 避免把节点解析到错误的后端；单后端站点上该参数恒等于当前同源地址，予以省略。
  */
-function openServer(server: GlassServer): void {
+function openServer(server: GlassServer, section?: 'ping'): void {
   void router.push(serverDetailLocation(
     server.id,
     server.sourceBase,
     hasMultipleSources(app.apiBases),
+    section,
   ))
 }
 
@@ -603,6 +604,7 @@ onUnmounted(() => realtime.stop())
                 :price-visible="priceVisible"
                 :style="cardStyle(index)"
                 @open="openServer(server)"
+                @open-ping="openServer(server, 'ping')"
                 @toggle-favorite="preferences.toggleFavorite(server.key)"
               />
             </TransitionGroup>

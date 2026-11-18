@@ -305,7 +305,8 @@ describe('详情页 DOM 与分区结构', () => {
 
   it('下半部与上游一致，只有 LoadChart 与 PingChart，按分区可见性挂载', () => {
     expect(detailView).toContain('<LoadChart v-if="loadVisible" />')
-    expect(detailView).toContain('<PingChart v-if="pingVisible" />')
+    expect(detailView).toContain('<section v-if="pingVisible" ref="pingSection" aria-label="延迟图表">')
+    expect(detailView).toContain('<PingChart />')
     // 旧的 PROBES / DISK IO / GPU / HISTORY 四个自创分区不再存在。
     for (const legacy of ['detail-section', 'probe-detail', 'gpu-detail', 'detail-stat-grid', 'history-range', 'HistoryChart']) {
       expect(detailView).not.toContain(legacy)

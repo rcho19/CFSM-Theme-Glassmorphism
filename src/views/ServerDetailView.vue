@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/dashboard/AppHeader.vue'
@@ -291,15 +291,24 @@ const DETAIL_SECTIONS: readonly AppTabItem[] = [
   { value: 'ping', label: '延迟', icon: 'tabler:timeline' },
 ]
 const detailSections = DETAIL_SECTIONS
-const activeSection = ref('overview')
+const activeSection = ref(route.query.section === 'ping' ? 'ping' : 'overview')
+const pingSection = ref<HTMLElement | null>(null)
 const sectionTabs = computed(() => theme.runtime.nodeDetailSectionTabsEnabled)
 const overviewVisible = computed(() => !sectionTabs.value || activeSection.value === 'overview')
 const loadVisible = computed(() => !sectionTabs.value || activeSection.value === 'load')
 const pingVisible = computed(() => !sectionTabs.value || activeSection.value === 'ping')
+let pendingPingScroll = route.query.section === 'ping'
 
-watch(() => server.value?.id, () => {
-  activeSection.value = 'overview'
+watch([() => server.value ? `${server.value.source.base}::${server.value.id}` : '', () => route.query.section], () => {
+  activeSection.value = route.query.section === 'ping' ? 'ping' : 'overview'
+  pendingPingScroll = route.query.section === 'ping'
 })
+watch([pingSection, () => route.query.section, sectionTabs, refreshing], async () => {
+  if (!pendingPingScroll || sectionTabs.value || refreshing.value || !pingSection.value) return
+  await nextTick()
+  pingSection.value?.scrollIntoView({ block: 'start' })
+  pendingPingScroll = false
+}, { flush: 'post' })
 
 /*
  * 硬件卡的 CPU 块，逐项对应上游：型号 + vCPU 数、PassMark 外链、近似分级条。
@@ -760,7 +769,9 @@ onUnmounted(() => detail.close())
           </section>
 
           <LoadChart v-if="loadVisible" />
-          <PingChart v-if="pingVisible" />
+          <section v-if="pingVisible" ref="pingSection" aria-label="延迟图表">
+            <PingChart />
+          </section>
         </template>
       </main>
 

@@ -10,6 +10,12 @@ export function probeTone(value: number | null, kind: 'latency' | 'loss'): strin
   const index = (kind === 'latency' ? [60, 100, 160, 200] : [1, 3, 6, 9]).findIndex((limit) => value <= limit)
   return `var(--signal-${index < 0 ? 5 : index + 1})`
 }
+/** 文字与曲线分色：常规延迟保持中性，异常延迟及丢包使用高对比度文字色。 */
+export function probeTextTone(value: number | null, kind: 'latency' | 'loss'): string {
+  if (value === null) return 'var(--muted)'
+  if (kind === 'latency' && value <= 160) return 'var(--ink)'
+  return probeTone(value, kind).replace('--signal-', '--three-net-text-')
+}
 export function bindingKey(origin: string, id?: string): string {
   return JSON.stringify([new URL(origin).origin, id ?? null])
 }
@@ -47,6 +53,8 @@ export function threeNetRows(server: GlassServer, raw: string) {
       failed,
       latencyTone: probeTone(failed ? 201 : latency.value, 'latency'),
       lossTone: probeTone(loss.value, 'loss'),
+      latencyTextTone: probeTextTone(failed ? 201 : latency.value, 'latency'),
+      lossTextTone: probeTextTone(loss.value, 'loss'),
       points: times.map((timestamp) => {
         const value = latencyByTime.get(timestamp)
         const packetLoss = byTime.get(timestamp)

@@ -14,7 +14,12 @@ export function serverDetailLocation(
   serverId: string,
   sourceBase: string,
   multiSource: boolean,
+  section?: 'ping',
 ): RouteLocationRaw {
+  if (section) return {
+    name: 'server-detail', params: { id: serverId },
+    query: multiSource ? { source: sourceBase, section } : { section },
+  }
   return multiSource
     ? { name: 'server-detail', params: { id: serverId }, query: { source: sourceBase } }
     : { name: 'server-detail', params: { id: serverId } }
