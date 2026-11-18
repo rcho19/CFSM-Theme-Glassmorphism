@@ -26,8 +26,10 @@ bun run typecheck
 bun run test
 bun run build
 bun run validate:dist
-bun audit
+bun run audit:dependencies
 ```
+
+依赖审计当前包含一项经补丁完整性与行为校验约束的临时例外，2026-12-02 自动到期；原始 `bun audit` 仍会报告该公告。详见 [picomatch 缓解及复核要求](docs/DEPENDENCY_MITIGATION_2026-11-18.md)。
 
 源码上传至你自己的仓库后，Actions 检查通过会把产物追加到 `dist` 分支。CFSM 同源安装推荐使用自己仓库 `dist` 的完整提交 SHA；不要使用上游仓库地址来安装本地改动。部署参数可从 GitHub Secrets 注入，但进入前端的 API 地址、标题等都是公开信息，绝不能填写任何凭据。
 

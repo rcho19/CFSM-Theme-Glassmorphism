@@ -20,6 +20,7 @@
     "test": "vitest run --configLoader runner",
     "build": "vue-tsc --noEmit -p tsconfig.json && vite build --configLoader runner",
     "validate:dist": "bun scripts/validate-dist.mjs",
+    "audit:dependencies": "bun scripts/audit-dependencies.mjs",
     "verify:security": "node scripts/check-security.mjs",
     "preview:fixture": "node tests/browser/mock-server.mjs",
     "preview": "vite preview --configLoader runner"
@@ -50,5 +51,8 @@
     "vite": "^7.3.8",
     "vitest": "^4.1.12",
     "vue-tsc": "^3.3.14"
+  },
+  "patchedDependencies": {
+    "picomatch@4.0.7": "patches/picomatch@4.0.7.patch"
   }
 }

@@ -27,6 +27,8 @@ JWT 和验证凭据保留 CFSM 的同源 localStorage/Cookie 约定，外源默�
 
 冻结 Bun 锁文件，已升级 Vite/Vitest 并限定修复版传递依赖。Bun 1.4.4 支持锁文件中的版本限定覆盖。`bun audit` 是已知公告检查，不等于人工审计全部依赖；发布前必须重新执行。
 
+2026-11-18：picomatch 尚无官方修复发布，现使用可审阅的本地保守缓解补丁。CI 与本地质量门执行 `bun run audit:dependencies`，仅在确切补丁哈希及行为校验通过后，临时排除 GHSA-fc5q-39xc-vjpf，2026-12-02 00:00 UTC 自动到期；其他公告与审计错误仍阻断。原始 `bun audit` 仍会报告该公告，不能宣称零漏洞。语义代价、移除条件与验证见 [缓解记录](DEPENDENCY_MITIGATION_2026-11-18.md)。
+
 CI 对 dist 采用普通 push、父提交追加历史，不强推。CI 的仓库 Token 只用于当前仓库构建发布；它不进入前端。部署参数即使来自 GitHub Secrets，写进 HTML 后也是公开值。
 
 本轮没有连接真实 Worker 或真实管理员会话。公开/私有及 Turnstile 的真实组合验收、所有目标浏览器和 Cloudflare 运行策略在发布前仍必须通过；未完成时只能标记开发候选版。

@@ -74,8 +74,10 @@ bun run typecheck
 bun run test
 bun run build
 bun run validate:dist
-bun audit
+bun run audit:dependencies
 ```
+
+当前审计入口先验证 picomatch 本地缓解，再精确排除一条有期限的公告；原始 `bun audit` 仍会报告该版本公告。例外到期、补丁缺失或其他漏洞均阻断构建，详见 [缓解记录](DEPENDENCY_MITIGATION_2026-11-18.md)。
 
 开发服务器没有内置生产探针，也不会自动使用你电脑上的凭据。Windows 若 Bun 下 SFC 检查异常，使用符合版本要求的 Node 执行 `node node_modules/vue-tsc/bin/vue-tsc.js --noEmit -p tsconfig.json`，不能跳过模板错误。
 

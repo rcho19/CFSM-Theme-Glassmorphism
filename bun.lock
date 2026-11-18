@@ -33,6 +33,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "picomatch@4.0.7": "patches/picomatch@4.0.7.patch",
+  },
   "overrides": {
     "brace-expansion@^1.1.7": {
       ".": "^1.1.21",
