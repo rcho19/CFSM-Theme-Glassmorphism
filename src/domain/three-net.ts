@@ -10,10 +10,10 @@ export function probeTone(value: number | null, kind: 'latency' | 'loss'): strin
   const index = (kind === 'latency' ? [60, 100, 160, 200] : [1, 3, 6, 9]).findIndex((limit) => value <= limit)
   return `var(--signal-${index < 0 ? 5 : index + 1})`
 }
-/** 文字与曲线分色：常规延迟保持中性，异常延迟及丢包使用高对比度文字色。 */
+/** 延迟沿用曲线色并按主题加深；丢包保留独立的高对比度文字色。 */
 export function probeTextTone(value: number | null, kind: 'latency' | 'loss'): string {
   if (value === null) return 'var(--muted)'
-  if (kind === 'latency' && value <= 160) return 'var(--ink)'
+  if (kind === 'latency') return `color-mix(in srgb, ${probeTone(value, kind)} var(--three-net-latency-share), black)`
   return probeTone(value, kind).replace('--signal-', '--three-net-text-')
 }
 export function bindingKey(origin: string, id?: string): string {

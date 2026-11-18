@@ -79,6 +79,7 @@ function time(timestamp: number): string { return new Date(timestamp).toLocaleTi
 
 <style scoped>
 .three-net {
+  --three-net-latency-share: 72%;
   --three-net-text-1: #047857;
   --three-net-text-2: #15803d;
   --three-net-text-3: #4d7c0f;
@@ -88,6 +89,7 @@ function time(timestamp: number): string { return new Date(timestamp).toLocaleTi
   display: grid; grid-template-columns: 6px minmax(0, max-content) max-content minmax(3rem, 1fr) max-content; column-gap: 4px;
 }
 :global([data-theme='dark'] .three-net) {
+  --three-net-latency-share: 95%;
   --three-net-text-1: #6ee7b7;
   --three-net-text-2: #86efac;
   --three-net-text-3: #bef264;
